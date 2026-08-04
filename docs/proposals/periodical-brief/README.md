@@ -30,9 +30,13 @@ cron / CI から人間向けに使っても有用です。
 cd rust
 cargo build --release
 ./target/release/periodical_brief btc_jpy eth_jpy   # 銘柄指定
-./target/release/periodical_brief --top 10          # 24h売買代金(JPY換算)上位10銘柄
-./target/release/periodical_brief --all             # 全銘柄（売買代金降順）
+./target/release/periodical_brief --top 10          # 24h売買代金上位10銘柄
+./target/release/periodical_brief --all             # 取扱い全銘柄（44・売買代金降順）
 ```
+
+`--all` / `--top` の母集団は**公式取扱い44銘柄（すべてJPY建て）**です。
+tickers API には旧ティッカー（matic_jpy / rndr_jpy / mkr_jpy）や BTC建てクロスペアも
+載りますが、現行の取扱い銘柄ではないため除外しています。
 
 public API のみ使用（APIキー不要）。取得は 1銘柄あたり4リクエスト
 （日足=今年+昨年の年間ファイル / 時足=直近2日分）で、接続プーリング付き・並列実行です。
@@ -45,7 +49,7 @@ Windows 11 / 同時16並列での実測:
 |---|---|
 | 3 | 約0.1〜0.2秒 |
 | 30 | 約0.3秒 |
-| 全62 | **約1.2秒・ERRORゼロ** |
+| 全44 | **約1.2秒・ERRORゼロ** |
 
 重要な知見として、**並列数無制限にすると30銘柄超で15〜26秒の失速が頻発**します
 （エラーは返らず遅延する。トークンバケット型のレート制限と推定）。

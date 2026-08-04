@@ -10,11 +10,11 @@
 //!
 //! 使い方:
 //!   periodical_brief btc_jpy eth_jpy      # 銘柄指定
-//!   periodical_brief --top 10             # 24h売買代金(JPY換算)上位10銘柄
-//!   periodical_brief --all                # 全銘柄（売買代金降順）
+//!   periodical_brief --top 10             # 24h売買代金上位10銘柄
+//!   periodical_brief --all                # 取扱い全銘柄（44・売買代金降順）
 //!   periodical_brief --concurrency 8 ...  # 同時リクエスト上限（既定16）
 //!
-//! 実測（Windows 11 / 上限16並列）: 全62銘柄 約1.2秒・ERRORゼロ。
+//! 実測（Windows 11 / 上限16並列）: 全44銘柄 約1.2秒・ERRORゼロ。
 //! 無制限並列は30銘柄超で APIレート制限による15〜26秒の失速を踏むため、
 //! 同時数ガードは必須（詳細は提案 README を参照）。
 
@@ -193,7 +193,13 @@ fn fetch_hourly(pair: &str, limit: usize) -> Result<Vec<Candle>, String> {
     Ok(all.split_off(start))
 }
 
-/// 全銘柄を24時間売買代金（JPY換算）の降順で返す。BTC建ては btc_jpy で換算。
+/// 旧ティッカーのペア。tickers API には残っているが、bitbank の現行取扱い
+/// 銘柄には含まれない（MATIC→POL・RNDR→RENDER 移行後、MKR は取扱い外）。
+const LEGACY_PAIRS: [&str; 3] = ["matic_jpy", "rndr_jpy", "mkr_jpy"];
+
+/// 公式取扱い銘柄（44種類・すべてJPY建て）を24時間売買代金の降順で返す。
+/// tickers API には旧ティッカーや BTC建てクロスペアも載るが、
+/// これらは現行の取扱い銘柄ではないため除外する。
 fn ranked_pairs() -> Result<Vec<String>, String> {
     let j = http_get(&format!("{BASE}/tickers"))?
         .ok_or_else(|| "tickers: not found".to_string())?;
@@ -201,30 +207,20 @@ fn ranked_pairs() -> Result<Vec<String>, String> {
         return Err("tickers: success != 1".into());
     }
     let rows = j["data"].as_array().ok_or_else(|| "tickers: no data".to_string())?;
-    let btc_jpy = rows
-        .iter()
-        .find(|r| r["pair"].as_str() == Some("btc_jpy"))
-        .and_then(|r| num(&r["last"]));
     let mut ranked: Vec<(String, f64)> = Vec::new();
     for r in rows {
         let pair = match r["pair"].as_str() {
             Some(p) => p.to_string(),
             None => continue,
         };
+        if !pair.ends_with("_jpy") || LEGACY_PAIRS.contains(&pair.as_str()) {
+            continue;
+        }
         let (vol, last) = match (num(&r["vol"]), num(&r["last"])) {
             (Some(v), Some(l)) => (v, l),
             _ => continue,
         };
-        let mut notional = vol * last;
-        if pair.ends_with("_btc") {
-            match btc_jpy {
-                Some(b) => notional *= b,
-                None => continue,
-            }
-        } else if !pair.ends_with("_jpy") {
-            continue;
-        }
-        ranked.push((pair, notional));
+        ranked.push((pair, vol * last));
     }
     ranked.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     Ok(ranked.into_iter().map(|(p, _)| p).collect())
@@ -424,8 +420,8 @@ usage: periodical_brief [pairs...] [--top N | --all] [--concurrency N]
 
   pairs...         対象ペア（例: btc_jpy eth_jpy）。省略時は BITBANK_BRIEF_PAIRS
                    または btc_jpy eth_jpy xrp_jpy
-  --top N          24時間売買代金（JPY換算）上位 N 銘柄を自動選択
-  --all            全銘柄（売買代金降順）
+  --top N          24時間売買代金上位 N 銘柄を自動選択
+  --all            取扱い全銘柄（44・売買代金降順）
   --concurrency N  同時リクエスト上限（既定16。無制限はレート制限を踏むので非推奨）";
 
 fn main() {
