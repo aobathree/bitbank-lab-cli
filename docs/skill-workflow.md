@@ -1,8 +1,8 @@
 # Skill の使い所ガイド
 
-全 12 の Skill をどう組み合わせて使うかの一例です。「現状把握 → 環境分析 → 仮説検証 → 戦略評価 → モニタリング」の流れに沿って使い分けるのがおすすめです。
+全 13 の Skill をどう組み合わせて使うかの一例です。「現状把握 → 環境分析 → 仮説検証 → 戦略評価 → モニタリング」の流れに沿って使い分けるのがおすすめです。
 
-内訳は分析コア 7（portfolio / volatility-profile / correlation-analysis / data-verification / indicator-analysis / signal-explorer / backtest）＋ ペーパートレード（paper-trade）＋ ユーティリティ 2（profile-management / watch-live）＋ recipe 2（recipe-pre-trade-check / recipe-portfolio-review）です。
+内訳は分析コア 7（portfolio / volatility-profile / correlation-analysis / data-verification / indicator-analysis / signal-explorer / backtest）＋ ペーパートレード（paper-trade）＋ ユーティリティ 2（profile-management / watch-live）＋ 税務（tax-report）＋ recipe 2（recipe-pre-trade-check / recipe-portfolio-review）です。
 
 > **各 Skill の責務・カテゴリ・代表トリガーの一覧は正典カタログ [`skills/INDEX.md`](../skills/INDEX.md) に集約しています。** 本ガイドは「どの順で使うか」という流れに絞っているので、個々の Skill の詳細や呼び出し例はそちらを参照してください（数の二重管理を避けるため、列挙は INDEX.md 側を正とします）。
 
@@ -38,6 +38,12 @@
 - 値動きを張り付いて見たいときは **watch-live**（WebSocket ticker。要 `--duration` / `--count`）。
 
 > 補助系：API キーを口座ごとに切り替える **profile-management**、実 API を叩かず仮想資金で売買練習する **paper-trade** は、上の流れと独立していつでも使えます。
+
+### 7. 年が明けたら（確定申告）
+
+- **tax-report**：年分の取引集計・残高突合・年間取引報告書との突合・参考損益。
+  投資判断のループとは独立していて、年に一度だけ回すもの。出るのは**税計算用参考データ**
+  であって税務上の所得金額ではない（計算は CLI 側に閉じている）。
 
 ## recipe — このワークフローを束ねたもの
 

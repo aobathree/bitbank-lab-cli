@@ -13,7 +13,7 @@ compatibility: |
   Plugin install alone does NOT bundle the CLI or its dependencies. Node.js 22+.
   Private API commands require API key/secret in .env file.
 metadata:
-  author: bitbank-aiforge
+  author: bitbankinc
   version: "1.0"
   recipe: true
   requires:
@@ -56,11 +56,17 @@ metadata:
 
 ### Step 1: 現況把握 — `portfolio`
 
-- 保有資産の構成、JPY 建て評価額、含み損益、推移を取得
+- 保有資産の構成、JPY 建て評価額、資産推移を取得
 - 取得観点:
   - 各銘柄の資産配分比率（偏りの大きさ）
   - JPY 比率（現金余力）
-  - 含み損益の方向と幅
+  - 単純増減・純入出金・調整後増減の 3 つ（入金による増加を値上がりと読まないため）
+  - 履歴の完全性（`completeness` / `warnings`）と前提（`note` / `assumptions`）。
+    復元値であること・最終点だけ実測であることを含めて `portfolio` の出力どおりに引く
+- **完全性が欠けているとき（`completeness.complete: false`）は調整後増減を解釈しない。**
+  総合判断は「判断保留」とし、打ち切りが起きている旨を根拠として示す
+- **含み損益は取得できない**（`portfolio` は取得価額を持たない）。取得価額ベースの
+  損益が要るなら tax-report へ回す。調整後増減を含み損益として扱わない
 
 ### Step 2: 分散効果の検証 — `correlation-analysis`
 
@@ -88,7 +94,8 @@ metadata:
 ## Portfolio Review
 
 ### 1. 現況
-- 総評価額: ¥XXX,XXX（含み損益 +X.X%）
+- 総評価額: ¥XXX,XXX（単純増減 +X.X% / 純入出金 ¥X,XXX / 調整後増減 +X.X%）
+- 履歴の完全性: 完全 / 打ち切りあり（打ち切り時は前提・警告をそのまま併記）
 - 配分: BTC XX% / ETH XX% / JPY XX% / ...
 - 集中度: 上位 1 銘柄で XX%
 
@@ -101,7 +108,7 @@ metadata:
 - BTC: 直近 σ は長期平均の X.X 倍（過熱 / 中立 / 沈静）
 - ETH: 直近 σ は長期平均の X.X 倍（...）
 
-### 総合判断: 健全 / 注意 / 要見直し
+### 総合判断: 健全 / 注意 / 要見直し / 判断保留
 - 主因: <2〜3 行で根拠>
 ```
 
@@ -111,7 +118,8 @@ metadata:
 |------|----------|
 | 健全 | 上位銘柄に過度集中なし、保有ペア相関が中程度以下、ボラ通常範囲、JPY 余力あり |
 | 注意 | 1 銘柄に 50%超 集中 or 保有ペア相関が常時 0.8 超、特定銘柄のボラ過熱 |
-| 要見直し | 全保有銘柄が高相関で実質 1 銘柄、JPY 余力ゼロでボラ過熱、含み損が許容超 |
+| 要見直し | 全保有銘柄が高相関で実質 1 銘柄、JPY 余力ゼロでボラ過熱、履歴が完全なうえで調整後増減の落ち込みが許容超 |
+| 判断保留 | Step 1 の履歴が打ち切られている（`completeness.complete: false`）、または各 step の結果が矛盾する |
 
 ### 可視化の扱い
 

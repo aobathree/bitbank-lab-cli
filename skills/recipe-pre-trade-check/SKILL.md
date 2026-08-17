@@ -12,7 +12,7 @@ compatibility: |
   Requires the bitbank CLI on PATH (install separately: npm i -g bitbank-lab-cli).
   Plugin install alone does NOT bundle the CLI or its dependencies. Node.js 22+.
 metadata:
-  author: bitbank-aiforge
+  author: bitbankinc
   version: "1.0"
   recipe: true
   requires:
@@ -48,7 +48,9 @@ metadata:
 
 ### Step 1: 現状把握 — `portfolio`
 
-- 現在の保有資産・JPY 残高・含み損益を取得
+- 現在の保有資産・JPY 残高・評価額を取得（`portfolio` は取得価額を持たないので
+  含み損益は出ない。取得価額ベースの判定を求められたら `tax-report`
+  （`tax pnl` の参考損益）へ案内する）
 - 取得観点:
   - 既に対象ペアを保有しているか（積み増し or 新規エントリー）
   - JPY 残高が想定エントリーサイズに対して十分か

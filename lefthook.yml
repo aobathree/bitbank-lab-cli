@@ -17,5 +17,8 @@ pre-commit:
       glob: "cli/**/*.{ts,json}"
       run: |
         ! grep -rn 'BITBANK_API_KEY\|BITBANK_API_SECRET\|API_KEY=' --include='*.ts' --include='*.json' --exclude-dir=__tests__ cli/ | grep -v -e 'process\.env\.' -e '"BITBANK_API' || (echo '❌ シークレットがコードに含まれています' && exit 1)
+    no-real-account-data:
+      # 検出パターンの単一ソースは scripts/check-no-real-account-data.sh（CI も同じものを呼ぶ）
+      run: sh scripts/check-no-real-account-data.sh staged
     test:
       run: npx vitest run

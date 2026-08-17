@@ -18,8 +18,26 @@ npx tsx cli/index.ts    # CLI 実行
 - CLI の責務は API データの取得と整形のみ。
   **例外: `paper` サブコマンド** はライブ価格 × 仮想資金のシミュレーション
   のため、ローカル状態（`~/.bitbank/paper-state.json`）を読み書きする。
-  これは public ticker のみを叩く読み取り専用の sim であり、
-  private/trade エンドポイントは絶対に叩かない
+  これは **public エンドポイントのみ**を叩く読み取り専用の sim であり、
+  private/trade エンドポイントは絶対に叩かない。実際に使うのは ticker・
+  candlestick（指値約定の判定）・pairs（発注量の検証）の 3 つ
+- **例外: `tax` サブコマンド**（[ADR-004](docs/adr/004-tax-logic-in-cli-exception.md)）は
+  税務・会計データ整形のため CLI 内で損益計算を行う。税務は「間違えられない」領域で、
+  LLM に計算させられないための例外。**private GET のみで POST は絶対に叩かない**。
+  数値は厳密有理数で保持し、丸めは境界で 1 回だけ
+  （[ADR-005](docs/adr/005-tax-exact-rational-arithmetic.md)）。
+  年分判定は JST（「JST は表示用のみ」規約の例外。`cli/date-utils.ts`）。
+  ユーザー指定の CSV（年間取引報告書など）は**読むだけ**で、書き出しも送信もしない。
+  出力は「税務上の所得金額」ではなく **税計算用参考データ** と呼ぶ。
+  参考損益は表示ガードが成立した銘柄でだけ数値を出す。ガードの保護対象と
+  唯一の対象外（verify-report の信用損益）は
+  [ADR-006](docs/adr/006-reference-pnl-guard-scope.md)
+- **例外: `balance-history`**（[ADR-007](docs/adr/007-balance-history-reconstruction-in-cli.md)）は
+  現在の残高から約定・入出金を逆算して各時点の保有を復元する。生データを渡してもモデルには
+  再現できず、間違いが静かなための例外。計算本体は `cli/portfolio/`、移植元は姉妹リポ
+  `bitbank-lab-mcp`（各ファイル冒頭に明記）。**private GET のみ**。数値は倍精度で、
+  ADR-005 の厳密有理数は税務経路に限る。履歴の打ち切りは
+  `partial` / `meta.truncated` / `completeness` / `warnings` の 4 経路で申告する
 - **1 ファイル 100 行は目安**。超えたら設計を見直す（責務が広がっていないか、
   リトライ・パース・整形などが混ざっていないか）。どうしても超過に妥当な
   理由がある場合は、ファイル冒頭にコメントで理由を書く
@@ -49,3 +67,5 @@ npx tsx cli/index.ts    # CLI 実行
 - リリース手順 → [`docs/dev/release.md`](docs/dev/release.md)（tag push で release.yml が
   version 注入・plugin manifest 同期・npm publish・GitHub Release を実行）
 - Skill 追加 → `.claude/rules/skills.md`
+- ADR 追加 → `.claude/rules/adr.md`（採番は最大番号 + 1。chaos `x21` が
+  番号重複・構成を検査する）

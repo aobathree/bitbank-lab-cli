@@ -36,3 +36,10 @@ coverage/
 *.log
 logs/
 npm-debug.log*
+
+# 実口座データ（docs/dev/tax-fixtures-plan.md）
+# fixtures/tools/ と fixtures/tests/ は「コード」なので追跡対象。生データと export のみ除外する
+fixtures/raw/
+fixtures/**/raw/
+**/user_spot_trades_archived-*.csv
+*.private.json

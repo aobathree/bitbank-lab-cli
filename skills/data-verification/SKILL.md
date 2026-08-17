@@ -10,7 +10,7 @@ compatibility: |
   Requires the bitbank CLI on PATH (install separately: npm i -g bitbank-lab-cli).
   Plugin install alone does NOT bundle the CLI or its dependencies. Node.js 22+.
 metadata:
-  author: bitbank-aiforge
+  author: bitbankinc
   version: "1.0"
   requires:
     bins:

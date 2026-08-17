@@ -1,0 +1,6 @@
+{
+  "note": "実データ fixtures の同一性マニフェスト（生成物）。実データは本リポジトリに置かない。集計値（件数・金額）は記録しない。パスは実ファイル名をそのまま用いる（不一致ファイルの特定に必要なため）。files が空のうちは回帰テストは skip される。",
+  "generator": "scripts/dev/tax/gen-fixtures-manifest.ts",
+  "env_var": "BITBANK_TAX_FIXTURES",
+  "files": []
+}

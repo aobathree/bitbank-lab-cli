@@ -1,34 +1,16 @@
-// 100行超: trade-history-all（全件取得）と --all ディスパッチャを同居させ、
-// trade-history(leaf) → all の循環依存を断つため
-// trade-history.ts を自動ページングで全件取得するラッパー
-// CLI では `trade-history --all` で呼び出される
-import { z } from "zod";
-import { EXIT } from "../../exit-codes.js";
+// trade-history.ts を自動ページングで全件取得するラッパー（単一 pair）。
+// CLI の --all/--all-pairs/--year 振り分けは trade-history-dispatch.ts、
+// 全ペア横断は trade-history-all-pairs.ts が担う
 import type { PrivateHttpOptions } from "../../http-private.js";
 import type { Result } from "../../types.js";
 import { validatePair } from "../../validators.js";
-import { formatZodError } from "./input-schemas.js";
-import { type Trade, type TradeHistoryArgs, tradeHistory } from "./trade-history.js";
+import { parseMaxPages } from "./input-schemas.js";
+import { type Trade, tradeHistory } from "./trade-history.js";
 
 // bitbank API の1リクエストあたり最大取得件数
 const PAGE_SIZE = 1000;
 // 既定の最大ページ数。誤起動・API 仕様変更で無限化しないための安全弁
 export const MAX_PAGES_DEFAULT = 1000;
-
-const MaxPagesSchema = z
-  .string()
-  .regex(/^[1-9]\d*$/, "max-pages must be a positive integer")
-  .transform((s, ctx) => {
-    const n = Number(s);
-    if (!Number.isSafeInteger(n)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        message: "max-pages must be a safe integer (≤ 2^53 - 1)",
-      });
-      return z.NEVER;
-    }
-    return n;
-  });
 
 type TradeHistoryAllArgs = {
   pair: string | undefined;
@@ -44,14 +26,9 @@ export async function tradeHistoryAll(
   const pv = validatePair(args.pair);
   if (!pv.success) return pv;
 
-  let maxPages = MAX_PAGES_DEFAULT;
-  if (args.maxPages !== undefined) {
-    const parsed = MaxPagesSchema.safeParse(args.maxPages);
-    if (!parsed.success) {
-      return { success: false, error: formatZodError(parsed.error), exitCode: EXIT.PARAM };
-    }
-    maxPages = parsed.data;
-  }
+  const mp = parseMaxPages(args.maxPages, MAX_PAGES_DEFAULT);
+  if (!mp.success) return mp;
+  const maxPages = mp.data;
 
   const allTrades: Trade[] = [];
   const seen = new Set<number>();
@@ -93,18 +70,4 @@ export async function tradeHistoryAll(
     partial: true,
     meta: { truncated: true, reason: "MAX_PAGES", returnedRows: allTrades.length },
   };
-}
-
-/** --all 分岐を吸収するディスパッチ関数 */
-export async function tradeHistoryDispatch(
-  args: TradeHistoryArgs & { all: boolean; maxPages?: string },
-  opts?: PrivateHttpOptions,
-): Promise<Result<Trade[]>> {
-  if (args.all) {
-    return tradeHistoryAll(
-      { pair: args.pair, since: args.since, end: args.end, maxPages: args.maxPages },
-      opts,
-    );
-  }
-  return tradeHistory(args, opts);
 }

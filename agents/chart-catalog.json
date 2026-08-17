@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0",
-  "cli_version": "0.2.0",
+  "cli_version": "0.0.0-dev",
   "generator": "scripts/gen-agents-catalog.ts",
   "description": "Machine-readable chart catalog for the bitbank-lab-cli Agent Skills. Generated from the 可視化 (visualization) sections of skills/*/SKILL.md. Each chart is a stable ID (`<skill>.<slug>`; renaming is a breaking change) plus its spec. Rendering conventions (opt-in trigger discipline, matplotlib resolution, output path/naming, style, provenance footer, safety rules) are defined in the shared guide — charts are opt-in and never replace text output. Do not edit by hand — run `npx tsx scripts/gen-agents-catalog.ts`.",
   "visualization_guide": "skills/_shared/references/visualization-guide.md",
@@ -98,7 +98,7 @@
       "id": "portfolio.value-history",
       "skill": "portfolio",
       "title": "JPY 建て資産推移",
-      "spec": "出力項目 2 の月次評価額。銘柄別の積み上げ棒（または合計線 + 銘柄別線）。`holdings fixed at current amounts`（保有量は現在値固定）を図中に明記"
+      "spec": "出力項目 2 の `points`（復元値）の折れ線 + 最終点 `current`（実測）を別マーカーで。`reconstructed from current balances; last point measured` と期間中の純入出金（`flow.net_flow_jpy`）を図中に明記し、入金による増加を値上がりと読ませない。`price_quality.level` が `complete` でなければ現在価格で代替評価した資産がある旨を、`warnings` があればその要約も添える"
     },
     {
       "id": "signal-explorer.scatter",

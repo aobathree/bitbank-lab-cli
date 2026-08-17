@@ -86,17 +86,17 @@ describe("handler request context (meta)", () => {
     expect(meta.request.command).toBe("candles");
   });
 
-  // 実装ファイル名とコマンド名が一致しない登録（trade-history → trade-history-all.ts の
+  // 実装ファイル名とコマンド名が一致しない登録（trade-history → trade-history-dispatch.ts の
   // dispatcher）でも、meta.request.command は router 由来の ctx.command でラベルされる
   it("labels meta.request.command with ctx.command, not the module filename", async () => {
     const cap = captureStdout();
     const h = handler(
-      new URL("../commands/private/trade-history-all.js", import.meta.url).pathname,
+      new URL("../commands/private/trade-history-dispatch.js", import.meta.url).pathname,
       "tradeHistoryDispatch",
       (_a, v) => ({ pair: v.pair, all: v.all === true }),
     );
     vi.spyOn(
-      await import("../commands/private/trade-history-all.js"),
+      await import("../commands/private/trade-history-dispatch.js"),
       "tradeHistoryDispatch",
     ).mockResolvedValue({ success: true, data: [] });
 

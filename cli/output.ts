@@ -55,7 +55,10 @@ export function machineOutput<T>(result: Result<T>): void {
     process.stdout.write(`${JSON.stringify(successEnvelope(result))}\n`);
   } else {
     const exitCode = result.exitCode ?? 1;
-    process.stdout.write(`${JSON.stringify({ success: false, error: result.error, exitCode })}\n`);
+    // human 経路（output()）と同じ無害化を通す。--machine は LLM パイプラインに
+    // 流れるため、パス/secret 様文字列/制御文字をここでもマスクする。
+    const error = sanitizeErrorMessage(result.error);
+    process.stdout.write(`${JSON.stringify({ success: false, error, exitCode })}\n`);
     process.exitCode = exitCode;
   }
 }

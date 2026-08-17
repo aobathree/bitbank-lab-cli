@@ -12,6 +12,189 @@
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-08-17
+
+### Added
+
+- **`bitbank tax` サブコマンドを新設**（`events` / `reconcile` / `verify-report` /
+  `pnl`）。bitbank 口座の取引を確定申告向けに整形する。出すのは「税務上の所得金額」
+  ではなく **税計算用参考データ**で、申告要否・税額・所得区分の判定はしない。
+  分析ロジックを CLI に置かない原則（ADR-002）の例外で、根拠は
+  [ADR-004](docs/adr/004-tax-logic-in-cli-exception.md)（税務は「間違えられない」領域で、
+  LLM に計算させられないため計算を CLI に閉じる）。**private GET のみで POST は
+  絶対に叩かない**。ユーザー指定の CSV は読むだけで、書き出しも送信もしない
+- 数値基盤として**厳密有理数**（`cli/tax/ratio.ts` / `ratio-decimal.ts`）を導入し、
+  丸めは境界で 1 回だけに限定した（[ADR-005](docs/adr/005-tax-exact-rational-arithmetic.md)）。
+  浮動小数点を経由しないため、集計順序で値が変わらない
+- 損益計算エンジン（`cli/tax/engine/`）に**総平均法・移動平均法**を実装。
+  既定は総平均法（移動平均法は税務署へ届出済みのユーザー向け）。不変条件 I1〜I4 と
+  処分上限を検査し、国税庁 FAQ の設例（2-4 / 2-8）をゴールデンテストで固定している
+- **参考損益の表示ガード**（`cli/tax/guard/reference-pnl.ts`）。(a) アテステーション
+  （`--attest`）/ (b) 取得価額を未確定にするフラグの不在 / (c) 前年繰越の確定
+  （`--carryover`）/ (d) 残高突合の一致 / 履歴が打ち切られていないこと、を**すべて
+  満たした銘柄だけ**参考損益を数値で出し、満たさない銘柄は欄を出さずに `blocked_by` へ
+  理由を並べる。ガードが守る範囲と唯一の対象外（`verify-report` の信用損益）は
+  [ADR-006](docs/adr/006-reference-pnl-guard-scope.md)
+- **年間取引報告書との突合** `bitbank tax verify-report`。bitbank 公式の CSV を
+  現物（`--csv`）・信用（`--margin-csv`）の 2 様式で受け取り、API 側と項目ごとに
+  突き合わせて `MATCH` / `FEE_ROUNDING` / `REPORT_EXCESS` / `API_EXCESS` に診断する。
+  CLI が API から再現できない列（BTC 建て・貸出・年末建玉）は `unsupported` として
+  分離し、差の解釈に混ぜない
+- **販売所（即時売買）の取込** `--brokerage-csv`。販売所の取引は API に一切現れないため、
+  UI の「売買履歴」CSV が唯一の取込経路になる。`events` / `reconcile` / `pnl` /
+  `verify-report` の 4 本すべてで受け付ける
+- **国税庁「暗号資産の計算書」互換モード**（`NTA_SHEET_2025_12`。
+  `cli/tax/compat/nta-sheet.ts`）。既定の計算（内部非丸め）は変えず、レポートに
+  `nta_compat` 欄を併記する。計算書へ手で書き写した場合と同じ値になるよう、
+  総平均法は収入計を切捨て・必要経費計を切上げ、移動平均法は売却の都度
+  残高価額を切上げる（既定とは**丸める場所が違う**ため 1 円ずれることがある）
+- **課税方式パラメータ**（`cli/tax/taxation.ts`）。課税年度から課税方式を決め、
+  `taxation.mode` / `certainty` / `basis` を出力する。方式が決まらない年は
+  推測で数値を出さずエラーにする
+- 税務の年分判定に使う **JST 年境界ヘルパー**（`cli/date-utils.ts` の `jstYear` /
+  `jstYearRangeMs` / `jstIso`）。「JST は表示用のみ」規約の明示的な例外
+- 生データ取得の網羅化: `trade-history` に `--all-pairs` / `--year`、
+  `deposit-history` に `--all` / `--year`、`withdrawal-history` に `--all` /
+  `--all-assets` / `--year` を追加。全ペア・全 asset を横断して年分を集める。
+  `--max-pages` の上限に当たった場合は打ち切りを `meta.truncated` / `partial` で申告し、
+  部分結果を黙って完全なものとして返さない（tax 側はこのとき参考損益をブロックする）
+- **`tax-report` Skill**（`skills/tax-report/`）。CLI が計算した確定値だけを提示し、
+  Skill 側では一切計算しない。免責（`disclaimers`）は要約せず全文を提示する
+- npm 公開物に `cli/tax/` を含めた（`package.json` の `files`）。**この 1 行が無いと
+  `npm pack` も CI も緑のまま公開物から tax が丸ごと欠け**、`bitbank tax` が実行時に
+  `ERR_MODULE_NOT_FOUND` で落ちる
+- ADR の採番手順 `.claude/rules/adr.md` を新設し、chaos `x21` で
+  `docs/adr/` の不変条件（番号重複なし・ファイル名と見出しの番号一致・
+  必須 4 節・ステータス語彙）を機械検証する。狙いは並行ブランチでの採番衝突で、
+  同じ番号の ADR が別ファイル名で作られると git は競合を出さないため、
+  main への push 時の CI が唯一の検出点になる（欠番は無害なので検査しない）
+- **`bitbank balance-history`**。現在の残高から約定・入出金を逆算して各時点の保有を
+  復元し、その日の 1day 足 open で評価する（計算本体は `cli/portfolio/`、根拠は
+  [ADR-007](docs/adr/007-balance-history-reconstruction-in-cli.md)）。**private GET のみ**。
+  純入出金は元本と出金手数料を分離し、単純増減と調整後増減（単純増減 − 純入出金）を
+  併記する。履歴の打ち切りは `partial` / `meta.truncated` / `completeness` / `warnings`
+  の 4 経路で申告する
+
+### Fixed
+
+- **リリース時のバージョン同期が plugin 配布経路に届いていなかった問題を修正**
+  （`scripts/sync-version.ts` / `.github/workflows/release.yml` / `docs/dev/release.md`）。
+  plugin manifest 5 種は npm tarball に入らず（`package.json` の `files` 対象外）、
+  marketplace / plugin client が読むのは **git tag のツリー**。release workflow は
+  tag が push された後に走るため、そこでの書き換えはどの配布物にも残っていなかった。
+  **0.3.0 のリリース後も 5 種すべてが `0.2.0` を表示したままだった。**
+  版上げを tag を切る前のローカル作業に移し、workflow 側は
+  `sync-version.ts --check <tag>` で照合して不一致なら publish 前に落とす
+- **`package.json` の version をプレースホルダ `0.0.0-dev` に固定**。実バージョンは
+  publish 直前に `npm version <tag>` が注入する。実バージョンを手で書くと tag と
+  一致して `npm version` が "Version not changed" で落ちる
+  （姉妹リポ `bitbank-lab-mcp` の v0.4.0 で発生 →
+  [#30](https://github.com/bitbankinc/bitbank-lab-mcp/pull/30) と同じ方針）。
+  chaos `x23` が 2 系統（プレースホルダ / manifest 揃い）を検査する
+- **`workflow_dispatch` からのリリースが tag 入力を無視していた問題を修正**
+  （`.github/workflows/release.yml`）。`${GITHUB_REF_NAME:-inputs.tag}` は
+  `GITHUB_REF_NAME` が常に非空（手動起動時はブランチ名）なので入力に落ちず、
+  `VERSION=main` で `npm version` が失敗していた。`inputs.tag || ref_name` の順に修正
+- **release workflow の shell 式展開を env 経由に変更**（template injection の遮断）。
+  `workflow_dispatch` の `tag` は手入力で、`${{ }}` の展開はシェルがパースする**前**に
+  起きるため、メタ文字を含む値で `run:` に任意コマンドを注入できた。`npm-publish` は
+  `id-token: write` を持つので OIDC trusted publishing にも到達し得る。tag は
+  workflow 全体の `env.RELEASE_TAG` に置き、`run:` からは `"$RELEASE_TAG"` で参照する
+- **`workflow_dispatch` で checkout 対象と publish 対象の tag が食い違い得た問題を修正**。
+  3 つの `actions/checkout` は起動時に選んだ ref を取るため、入力 tag と別のコードを
+  その tag の npm package として publish できた。各 checkout に
+  `ref: refs/tags/<tag>` を指定する。`refs/` で修飾するのは、**未修飾 ref では branch が
+  tag より優先される**ため（`actions/checkout` の `getCheckoutInfo` は
+  `branchExists(origin/<ref>)` を先に見る）。修飾しないと、tag と同名の branch を
+  作るだけで「存在しない tag なら checkout が失敗する」ガードを迂回できてしまう
+- **`portfolio` Skill の「JPY 建て資産推移」が誤読を生んでいた問題を修正**
+  （`skills/portfolio/SKILL.md`）。旧実装は「**現在の保有量 × 過去の価格**」の近似を
+  モデルに計算させるもので、入出金も売買も反映していなかった。積み立てている口座では
+  過去の行が実残高から大きく乖離し、実機確認 #14 の追試で **口座の持ち主本人が
+  「資産が半減した」と誤認しかけた**（誤読は例外条件ではなく普通の使い方で起きる）。
+  **旧実装の出力を資産推移として信じていた場合、その過去の行は実残高ではない。**
+  新実装は `bitbank balance-history` の復元結果をそのまま提示し、モデルは計算しない
+  （月次ローソク足を取って掛け算する手順は削除）
+- 資産推移の提示規律を明文化した。**単純増減・純入出金・調整後増減は必ず 3 つ揃えて
+  出す**（「+50,000 円のうち 40,000 円は入金」が伝わらないと、入金を値上がりと
+  誤認させる）。`warnings` / `assumptions` は要約・省略せずそのまま伝え、履歴が
+  打ち切られているときは表より先に「復元値は信用できない」と明言する
+- **注記義務の非対称を解消した。** 「復元値であること・最終点だけ実測であること」の
+  明示は、これまで可視化節が**図にだけ**課しておりテキスト表側に規定が無かった。
+  それが今回の穴の直接原因だったため、テキストにも同じ強度の義務を課し、注記は
+  **表の前**に置くと定めた（旧実装の誤読は、注記が 20 行の表の後ろにあったために起きた）
+- 標準チャート `portfolio.value-history` の図中注記を新しい前提へ更新した
+  （`holdings fixed at current amounts` は**廃止**。復元ベースである旨・最終点のみ実測で
+  ある旨・期間中の純入出金を必須注記にした）。チャート ID は変えていない
+- `portfolio` Skill の提供機能から **`含み損益`** を外した。取得価額を持たないため
+  計算できず、`balance-history` が入っても変わらない（あれが出すのは評価額の推移と
+  入出金調整であって、取得原価ベースの損益ではない）。**トリガー「含み益ある？」は
+  残し**、評価額と推移を出したうえで tax-report（`tax pnl` の参考損益）へ案内する
+  応答を本文に規定した。`調整後増減` を含み損益と混同しない注意も入れている。
+  同じ記述を持っていた `skills/INDEX.md` / `recipe-portfolio-review` /
+  `recipe-pre-trade-check` も揃えた
+
+#### tax サブシステムの横断監査で見つかった 7 件（リリース前に修正済み）
+
+サブシステム全体を 1 つの系として見る監査を行い、**個々の変更は正しいが組み合わせで
+破れる**不変条件を洗い出した。以下はいずれも**誤った数値が警告なく出る**か、
+**その一歩手前**の経路である。
+
+- **`--carryover=zero` を全履歴で反証するようにした**（`cli/tax/report/run.ts` /
+  `guard/reference-pnl.ts`）。前年に入庫のみがある銘柄で `--carryover=zero` を使うと、
+  当年イベントにブロックフラグが立たず（(b) は当年スコープ）、残高突合も入庫を数量に
+  含めたまま MATCH するため、**入庫分を母集団から落とした平均単価がガード (a)〜(d) を
+  すべて通過して数値で出ていた**。「当年が初年度」はユーザーの主張であると同時に
+  **CLI が全履歴で反証できる事実主張**なので、前年以前に同一銘柄のイベントがあれば
+  ゼロ確定の繰越として埋めず (c) が理由付きで止める。明示の `--carryover` ファイルは
+  従来どおり通す（中身の正しさは機械で反証できず、それを受けるのが (c) の意味）。
+  (c) の文言は「繰越を書き忘れた」と「zero と書いたが反証された」で分けた
+  （利用者の次の行動が違うため）。ADR-006 に別軸の判定として追記
+- **繰越 JSON の資産キーを `canonicalAsset` で正規化するようにした**
+  （`cli/tax/carryover.ts`）。繰越だけが `toLowerCase` で名寄せ（付録E.5）を通って
+  おらず、旧シンボルで `matic` と書いた繰越は `pol` のイベントと結び付かなかった。
+  実体のある `pol` は (c) 未確定でブロックされる一方、`matic` は突合行を持たないまま
+  **「取引ゼロ・期末＝繰越」の参考欄だけを出す幽霊行**になっていた。
+  名寄せ後の衝突検出は従来どおり効くので `matic` と `pol` の併記は明示エラーになる
+- **同一ミリ秒のタイブレークを約定 ID の数値順に統一した**（`cli/tax/sort-order.ts` へ集約）。
+  4 箇所とも素の `localeCompare` で `"10:0" < "9:0"` という辞書順になっており、
+  取得側（数値順）と**リポジトリ内に 2 つの順序定義が併存**していた。移動平均法は
+  時系列順が結果を変えるため、同一ミリ秒に取得と処分が混ざると譲渡原価が入れ替わる。
+  数値順は `Number()` 化せず「桁数 → 辞書順」で決める（販売所の注文 ID は任意長で
+  2^53 を超え得るため）。総平均法は順序非依存なので影響しない
+- **順序を定義できない異ソース同時刻を違反として止めるようにした**
+  （`cli/tax/engine/order-ambiguity.ts`）。取引所の `trade_id` と販売所の注文 ID は
+  別の ID 空間で数値の大小に意味が無く、販売所 CSV の日時は秒精度なので**秒未満の
+  前後関係は原理的に復元できない**。止めるのは順序が結果を変える組み合わせだけ
+  （同一 `ts_utc` × 異 ID 空間 × 同一銘柄で取得と処分が混在）に限定し、可換な
+  取得どうし・処分どうしは誤ブロックしない。検出は `violations` に積む
+  （`pending` では `evaluateGuard` が見ず参考損益が止まらないため）
+- **信用の未観測形状を fail-closed にした**（`cli/tax/ledger/margin-entries.ts` /
+  `import/to-events-margin.ts`）。2 経路が無言で通っていた。(1) `MARGIN_CLOSE` なのに
+  `realized_net` が無いと空配列が返り、**その決済の差益・差損・手数料が income /
+  expense / reference_pnl から消えていた**（`verify-report` は同じ欠落を警告に出して
+  いたので `pnl` 側だけが沈黙していた）。理由付きで `deferred` に回す。
+  (2) 建玉 open 行に `profit_loss` が乗る形状を検知しておらず、新規／決済の判定か
+  API 形状が想定と違うときその損益がどこにも計上されずに消えていた。観測形状では
+  open は `"0"` なので、非ゼロなら `UNOBSERVED_SHAPE` を立てて銘柄ごとブロックする
+  （読めない値も「ゼロと確認できない」側に倒す）
+- **互換モードの移動平均を行ごとに円確定するようにした**
+  （`cli/tax/compat/moving-average-sheet.ts` を分離）。国税庁計算書は繰越価額・購入価額が
+  **整数円入力である前提**で組まれている（付録D.5 / D.3）。販売所は約定代金の列が無く
+  `数量 × 指値価格` で出すため小数円になり、そのまま漸化式へ入れると `nta_compat` が
+  「計算書に書いたらこうなる」値でなくなっていた。シートへ入れる金額を HALF_UP で
+  円に確定してから回す（丸めモードは翌年 B 欄への転記に揃えた）。**既定エンジンは
+  変えない**（ADR-005: 内部非丸め）。整数円入力では挙動が変わらないため、取引所だけの
+  口座は無影響。注記は移動平均法のレポートにだけ載せる
+- **不変条件 I4（互換モードの丸め起因の乖離額）を実装した**（`nta_compat.delta` に 4 欄）。
+  要求仕様 §3 の I4「Excel 互換モード有効時のみ丸め起因の I1 乖離を許容し、乖離額を
+  レポートに明示」が未実装で、設計文書と実態が食い違っていた。I4 は違反ではなく
+  **開示**なので検出側ではなく出力に出す。向きは「既定 − 互換」。差が無い欄も 0 として
+  残す（差が無いこと自体が情報）。総平均法では必要経費計に、移動平均法では譲渡原価に
+  差が出るため 4 欄すべてを出す。**スキーマ変更のため `agents/` を再生成した**
+
+## [0.3.0] - 2026-07-17
+
 ### Added
 
 - 分析系 Skill に可視化（グラフ出力）レイヤーを追加。共有規約

@@ -1,4 +1,19 @@
-import { COMMANDS, PAPER_COMMANDS, PROFILE_COMMANDS, TRADE_COMMANDS } from "./commands/registry.js";
+import {
+  COMMANDS,
+  PAPER_COMMANDS,
+  PROFILE_COMMANDS,
+  TAX_COMMANDS,
+  TRADE_COMMANDS,
+} from "./commands/registry.js";
+import type { SubcommandGroup } from "./router.js";
+
+/** サブコマンドグループのヘルプ。index.ts 側の分岐をここに閉じ込める。 */
+export function showGroupHelp(group: SubcommandGroup): void {
+  if (group === "trade") showTradeHelp();
+  else if (group === "paper") showPaperHelp();
+  else if (group === "profile") showProfileHelp();
+  else showTaxHelp();
+}
 
 export function showHelp(): void {
   console.log("Usage: bitbank <command> [options]\n");
@@ -17,6 +32,9 @@ export function showHelp(): void {
   );
   console.log(
     `  ${"profile <subcommand>".padEnd(24)} Manage credential profiles (run 'bitbank profile' for list)`,
+  );
+  console.log(
+    `  ${"tax <subcommand>".padEnd(24)} Tax/accounting reference data (run 'bitbank tax' for list)`,
   );
   console.log("\nOptions:");
   console.log("  --profile=<name>         Use named profile (profiles.json or .env.<name>)");
@@ -48,6 +66,19 @@ export function showPaperHelp(): void {
     console.log(`  ${name.padEnd(24)} ${description}`);
   }
   console.log("\nRun 'bitbank paper <subcommand> --help' for subcommand options.");
+}
+
+export function showTaxHelp(): void {
+  console.log("Usage: bitbank tax <subcommand> [options]\n");
+  console.log(
+    "Tax/accounting reference data. Private GET only — never POST. Output is reference\n" +
+      "data for tax computation, NOT a taxable income figure.\n",
+  );
+  console.log("Subcommands:");
+  for (const [name, { description }] of Object.entries(TAX_COMMANDS)) {
+    console.log(`  ${name.padEnd(24)} ${description}`);
+  }
+  console.log("\nRun 'bitbank tax <subcommand> --help' for subcommand options.");
 }
 
 export function showProfileHelp(): void {

@@ -1,16 +1,27 @@
 import type { CommandEntry } from "./handler-types.js";
-import { str, valStr } from "./handler-types.js";
+import { bool, str, valStr } from "./handler-types.js";
 import { handler } from "./make-handler.js";
 
 export const privateTransferCommands: Record<string, CommandEntry> = {
   "deposit-history": {
-    description: "Get deposit history",
-    options: { asset: str, count: str, since: str, end: str },
-    handler: handler("./private/deposit-history.js", "depositHistory", (_a, v) => ({
+    description: "Get deposit history (--all auto-paginates; --year=<YYYY> for a JST tax year)",
+    options: {
+      asset: str,
+      count: str,
+      since: str,
+      end: str,
+      all: bool(),
+      year: str,
+      "max-pages": str,
+    },
+    handler: handler("./private/deposit-history-all.js", "depositHistoryDispatch", (_a, v) => ({
       asset: valStr(v, "asset"),
       count: valStr(v, "count"),
       since: valStr(v, "since"),
       end: valStr(v, "end"),
+      all: !!v.all,
+      year: valStr(v, "year"),
+      maxPages: valStr(v, "max-pages"),
     })),
   },
   "unconfirmed-deposits": {
@@ -34,13 +45,31 @@ export const privateTransferCommands: Record<string, CommandEntry> = {
     })),
   },
   "withdrawal-history": {
-    description: "Get withdrawal history",
-    options: { asset: str, count: str, since: str, end: str },
-    handler: handler("./private/withdrawal-history.js", "withdrawalHistory", (_a, v) => ({
-      asset: valStr(v, "asset"),
-      count: valStr(v, "count"),
-      since: valStr(v, "since"),
-      end: valStr(v, "end"),
-    })),
+    description:
+      "Get withdrawal history (--all / --all-assets auto-paginate; --year=<YYYY> for a JST tax year)",
+    options: {
+      asset: str,
+      count: str,
+      since: str,
+      end: str,
+      all: bool(),
+      "all-assets": bool(),
+      year: str,
+      "max-pages": str,
+    },
+    handler: handler(
+      "./private/withdrawal-history-dispatch.js",
+      "withdrawalHistoryDispatch",
+      (_a, v) => ({
+        asset: valStr(v, "asset"),
+        count: valStr(v, "count"),
+        since: valStr(v, "since"),
+        end: valStr(v, "end"),
+        all: !!v.all,
+        allAssets: !!v["all-assets"],
+        year: valStr(v, "year"),
+        maxPages: valStr(v, "max-pages"),
+      }),
+    ),
   },
 };

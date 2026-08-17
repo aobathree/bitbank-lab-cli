@@ -8,8 +8,12 @@ const TRUNCATE_SUFFIX = "...[truncated]";
 
 // Absolute paths. Lookbehind `(?<![\w:/.~])` avoids matching URLs
 // (https://...), relative paths (./foo, ../foo), and tilde paths (~/foo).
-const UNIX_PATH_RE = /(?<![\w:/.~])\/(?:[a-zA-Z0-9._-]+\/)+[a-zA-Z0-9._-]+/g;
-const WIN_PATH_RE = /(?<!\w)[A-Za-z]:[\\/](?:[a-zA-Z0-9._-]+[\\/])*[a-zA-Z0-9._-]+/g;
+// Separators are `+` so a run of slashes (`/a/b//c` from a bad path join)
+// stays inside one match: a match can never start just after a separator
+// (the lookbehind blocks it), so a single-slash pattern would mask only the
+// first path and leave the rest of the string untouched.
+const UNIX_PATH_RE = /(?<![\w:/.~])\/+(?:[a-zA-Z0-9._-]+\/+)+[a-zA-Z0-9._-]+/g;
+const WIN_PATH_RE = /(?<!\w)[A-Za-z]:[\\/]+(?:[a-zA-Z0-9._-]+[\\/]+)*[a-zA-Z0-9._-]+/g;
 
 // >= 32 hex chars look like API keys / signatures / hashes.
 const HEX_TOKEN_RE = /\b[0-9a-fA-F]{32,}\b/g;

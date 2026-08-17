@@ -38,6 +38,12 @@ describe("Chaos X-02: all commands return Result<T>", () => {
     expect(missing, `Missing Promise<Result<: ${missing.join(", ")}`).toEqual([]);
   });
 
+  // 税務コマンドも同じ規約に乗せる（ディレクトリを分けて規約から外れない）
+  it("all tax command files use Promise<Result<", () => {
+    const missing = findMissing("cli/commands/tax/");
+    expect(missing, `Missing Promise<Result<: ${missing.join(", ")}`).toEqual([]);
+  });
+
   it("all 4 http modules return Result<T>", () => {
     const hits = execSync(
       'grep -l "Promise<Result<" cli/http.ts cli/http-private.ts cli/http-private-post.ts cli/http-core.ts || true',

@@ -7,9 +7,10 @@ tag 駆動 + GitHub Actions 多段階パイプライン。
 
 `.github/workflows/release.yml` は 3 job で構成される:
 
-1. `ci` — tag 上のコードで lint / typecheck / test を再実行
-2. `npm-publish` — tag から version を注入し plugin manifest・agents カタログを
-   同期してから `npm publish --provenance`
+1. `ci` — tag 上のコードで lint / typecheck / test を再実行し、
+   **plugin manifest の version が tag と一致するか照合**する（不一致なら publish 前に停止）
+2. `npm-publish` — tag から `package.json` へ version を注入し agents カタログを
+   再生成してから `npm publish --provenance`
 3. `github-release` — GitHub Release を自動作成（リリースノート自動生成）
 
 トリガー:
@@ -19,37 +20,59 @@ tag 駆動 + GitHub Actions 多段階パイプライン。
 
 ## バージョン同期
 
-publish 時に release workflow が以下を実行する（ローカルでの事前同期は不要）:
+**版数の置き場所は 2 系統あり、同期のタイミングが違う。** 配布経路が別なので
+片方のやり方をもう片方に適用すると、ローカルもテストも green のまま配布物だけ壊れる。
 
-1. `npm version <tag-version> --no-git-tag-version` — `package.json` を tag に合わせる
-2. `scripts/sync-version.mjs` — plugin manifest 5 種 + ルート `plugin.json` へ転写
-3. `scripts/gen-agents-catalog.ts` — `agents/tool-catalog.json` /
+### 1. npm 経路 — publish 時に CI が注入する（事前作業なし）
+
+`package.json` は git 上では **`0.0.0-dev` のプレースホルダ**で固定する。
+実バージョンは publish 直前に release workflow が入れる:
+
+1. `npm version <tag-version> --no-git-tag-version` — tag から `package.json` へ注入
+2. `scripts/gen-agents-catalog.ts` — `agents/tool-catalog.json` /
    `agents/error-catalog.json` / `agents/chart-catalog.json` を再生成
-   （`cli_version` を埋め込む）
+   （`package.json` から `cli_version` を埋め込む）
 
-対象ファイル（計 6 + 生成物 3）:
+> **`package.json` の version を手で上げてはいけない。** tag と一致すると
+> `npm version` が "Version not changed" で落ちて publish が失敗する
+> （前科: 姉妹リポ `bitbank-lab-mcp` の v0.4.0 →
+> [#30](https://github.com/bitbankinc/bitbank-lab-mcp/pull/30)）。
+> chaos `x23` がプレースホルダであることを検査する。
 
-- `package.json`
+### 2. plugin 経路 — tag を切る**前**にローカルで書いてコミットする
+
+plugin manifest 5 種は **npm tarball に入らない**（`package.json` の `files`
+対象外。`npm pack --dry-run` で確認できる）。marketplace / plugin client が読むのは
+**git tag のツリー**で、release workflow は tag が push された後に走るため、
+CI 側からは tagged tree を直せない。したがって版上げはリリース準備コミットに含める:
+
+```bash
+npx tsx scripts/sync-version.ts 0.3.1   # 5 種の manifest を書き換える
+```
+
+対象（`scripts/sync-version.ts` の `TARGETS` が単一ソース）:
+
 - `.claude-plugin/plugin.json` / `.cursor-plugin/plugin.json` /
   `.codex-plugin/plugin.json` / `gemini-extension.json` / `plugin.json`
-- `agents/tool-catalog.json` / `agents/error-catalog.json` /
-  `agents/chart-catalog.json`
+
+release workflow の `ci` job が `sync-version.ts --check <tag>` で tag との一致を
+照合し、ズレていれば **publish 前に落とす**。落ちたら manifest を直してコミットし、
+tag を切り直す。
 
 ルートの `plugin.json` は Antigravity CLI（旧 Gemini CLI）のネイティブ
 plugin manifest。旧 CLI 互換の `gemini-extension.json` と両置きすることで
 新旧どちらの CLI からもリモート install できる。
 
-`.claude-plugin/marketplace.json` は marketplace カタログであり version 同期
-対象外（`scripts/sync-version.mjs` の targets に入れない）。
-
-main ブランチ上の `package.json` / plugin manifest は、公開済み npm version と
-一致しないことがある（MCP と同様）。npm tarball 内では publish 直前に全て
-揃う。
+`.claude-plugin/marketplace.json` は marketplace カタログで version を持たないため
+同期対象外（`TARGETS` に入れない）。
 
 ## 手順
 
 ```bash
-# 1. CHANGELOG の [Unreleased] を更新して main にマージ
+# 1. CHANGELOG の [Unreleased] を更新し、plugin manifest の版数を上げて main にマージ
+#    （package.json は 0.0.0-dev のまま触らない）
+npx tsx scripts/sync-version.ts 0.2.1
+git commit -am "chore: v0.2.1 リリース準備"
 
 # 2. tag を作成して push
 git tag v0.2.1
@@ -83,10 +106,14 @@ OIDC が使えない / workflow が失敗した場合の緊急用:
 
 ```bash
 VERSION=0.2.1
+npx tsx scripts/sync-version.ts --check "$VERSION"   # manifest が tag と揃っているか確認
 npm version "$VERSION" --no-git-tag-version
-node scripts/sync-version.mjs
 npx tsx scripts/gen-agents-catalog.ts
 npm publish --otp=<OTP>
+
+# publish 後は必ずプレースホルダへ戻す（コミットしない運用でも可）。
+# `npm version` は package-lock.json の version も書き換えるので一緒に戻す
+git checkout package.json package-lock.json agents/
 ```
 
 `--provenance` は OIDC 経由でしか付かないため、手動 publish したバージョンは

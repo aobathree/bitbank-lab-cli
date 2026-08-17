@@ -1,0 +1,878 @@
+{
+  "note": "raw/ フィクスチャの型スナップショット（API 仕様変更の検出用）。present は always / partial の区分のみ（絶対件数は口座規模の情報になるため出さない）。識別子はマスク済みのため destination_tag は生の number がマスキングで string 化されている。types はマスク後フィクスチャの観測値。",
+  "generated_from_batches": [
+    "batch1-20260725T0856Z",
+    "batch2-20260725T111940Z"
+  ],
+  "endpoints": {
+    "user_spot_trade_history.trades[]": {
+      "amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "executed_at": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "fee_amount_base": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "fee_amount_quote": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "fee_occurred_amount_quote": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "interest": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "maker_taker": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "order_id": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "pair": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "position_side": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "price": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "profit_loss": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "side": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "trade_id": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "type": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      }
+    },
+    "user_deposit_history.deposits[]": {
+      "address": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "asset": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "confirmed_at": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "found_at": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "network": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "status": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "txid": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "partial"
+      },
+      "uuid": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      }
+    },
+    "user_withdrawal_history.withdrawals[]": {
+      "account_number": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "account_owner": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "account_type": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "account_uuid": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "address": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "asset": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "bank_name": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "branch_name": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "destination_tag": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "fee": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "label": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "network": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "requested_at": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "status": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "txid": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "uuid": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      }
+    },
+    "user_margin_status": {
+      "available_balances": {
+        "types": [
+          "array"
+        ],
+        "present": "always"
+      },
+      "available_balances[].long": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "available_balances[].pair": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "available_balances[].short": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "buy_credit": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "losscut_percentage": {
+        "types": [
+          "null"
+        ],
+        "present": "always"
+      },
+      "margin_call_percentage": {
+        "types": [
+          "null"
+        ],
+        "present": "always"
+      },
+      "margin_position_profit_loss": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "open_margin_order_product": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "open_margin_position_product": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "sell_credit": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "status": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "total_long_open_order_maintenance_margin": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "total_long_position_maintenance_margin": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "total_margin_balance": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "total_margin_balance_percentage": {
+        "types": [
+          "null"
+        ],
+        "present": "always"
+      },
+      "total_margin_position_product": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "total_open_order_maintenance_margin": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "total_position_maintenance_margin": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "total_short_open_order_maintenance_margin": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "total_short_position_maintenance_margin": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "unrealized_cost": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      }
+    },
+    "user_margin_positions": {
+      "losscut_threshold": {
+        "types": [
+          "object"
+        ],
+        "present": "always"
+      },
+      "losscut_threshold.company": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "losscut_threshold.individual": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "notice": {
+        "types": [
+          "object"
+        ],
+        "present": "always"
+      },
+      "notice.amount": {
+        "types": [
+          "null"
+        ],
+        "present": "always"
+      },
+      "notice.due_date_at": {
+        "types": [
+          "null"
+        ],
+        "present": "always"
+      },
+      "notice.occurred_at": {
+        "types": [
+          "null"
+        ],
+        "present": "always"
+      },
+      "notice.what": {
+        "types": [
+          "null"
+        ],
+        "present": "always"
+      },
+      "payables": {
+        "types": [
+          "object"
+        ],
+        "present": "always"
+      },
+      "payables.amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "positions": {
+        "types": [
+          "array"
+        ],
+        "present": "always"
+      },
+      "positions[].average_price": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "positions[].open_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "positions[].pair": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "positions[].position_side": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "positions[].product": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "positions[].unrealized_fee_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "positions[].unrealized_interest_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      }
+    },
+    "user_assets.assets[]": {
+      "amount_precision": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "asset": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "collateral_ratio": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "free_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "locked_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "network_list": {
+        "types": [
+          "array"
+        ],
+        "present": "partial"
+      },
+      "network_list[].asset": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "network_list[].network": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "network_list[].stop_deposit": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "network_list[].stop_withdrawal": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "network_list[].withdrawal_fee": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "onhand_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "stop_deposit": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_withdrawal": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "withdrawal_fee": {
+        "types": [
+          "object"
+        ],
+        "present": "always"
+      },
+      "withdrawal_fee.max": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "withdrawal_fee.min": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "withdrawal_fee.over": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "withdrawal_fee.threshold": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "withdrawal_fee.under": {
+        "types": [
+          "string"
+        ],
+        "present": "partial"
+      },
+      "withdrawing_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      }
+    },
+    "spot_pairs.pairs[]": {
+      "amount_digits": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "base_asset": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "is_enabled": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "limit_max_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "maker_fee_rate_base": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "maker_fee_rate_quote": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_close_maker_fee_rate_quote": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_close_taker_fee_rate_quote": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_current_company_ratio": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_current_company_until": {
+        "types": [
+          "null",
+          "number"
+        ],
+        "present": "always"
+      },
+      "margin_current_individual_ratio": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_current_individual_until": {
+        "types": [
+          "null",
+          "number"
+        ],
+        "present": "always"
+      },
+      "margin_long_interest": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_next_company_ratio": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_next_company_until": {
+        "types": [
+          "null",
+          "number"
+        ],
+        "present": "always"
+      },
+      "margin_next_individual_ratio": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_next_individual_until": {
+        "types": [
+          "null",
+          "number"
+        ],
+        "present": "always"
+      },
+      "margin_open_maker_fee_rate_quote": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_open_taker_fee_rate_quote": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "margin_short_interest": {
+        "types": [
+          "null",
+          "string"
+        ],
+        "present": "always"
+      },
+      "market_allowance_rate": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "market_in_cb_allowance_rate": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "market_max_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "name": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "price_digits": {
+        "types": [
+          "number"
+        ],
+        "present": "always"
+      },
+      "quote_asset": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "stop_buy_order": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_margin_long_order": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_margin_short_order": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_market_order": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_order": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_order_and_cancel": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_sell_order": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_stop_limit_order": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "stop_stop_order": {
+        "types": [
+          "boolean"
+        ],
+        "present": "always"
+      },
+      "taker_fee_rate_base": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "taker_fee_rate_quote": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      },
+      "unit_amount": {
+        "types": [
+          "string"
+        ],
+        "present": "always"
+      }
+    }
+  }
+}

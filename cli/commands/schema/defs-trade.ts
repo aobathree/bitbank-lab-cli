@@ -80,16 +80,3 @@ export const tradeSchemas: Record<string, SchemaDef> = {
     output: { type: "object", description: "Empty object on success" },
   },
 };
-
-export const streamSchemas: Record<string, SchemaDef> = {
-  stream: {
-    category: "stream",
-    params: {
-      pair,
-      private: p("boolean", "Use private channel (requires auth)"),
-      channel: p("string", "Channel name override"),
-      filter: p("string", "JSON path filter"),
-    },
-    output: { type: "object", description: "Real-time event data (varies by channel)" },
-  },
-};

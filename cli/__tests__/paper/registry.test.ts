@@ -30,23 +30,23 @@ describe("PAPER_COMMANDS registry", () => {
 });
 
 describe("resolveCommand for paper", () => {
-  it("paper alone is isPaper=true with undefined entry", () => {
+  it("paper alone is group=paper with undefined entry", () => {
     const r = resolveCommand(["paper"]);
-    expect(r.isPaper).toBe(true);
-    expect(r.isTrade).toBe(false);
+    expect(r.group).toBe("paper");
+    expect(r.command).toBeUndefined();
     expect(r.entry).toBeUndefined();
   });
 
   it("paper init resolves to PAPER_COMMANDS.init", () => {
     const r = resolveCommand(["paper", "init"]);
-    expect(r.isPaper).toBe(true);
+    expect(r.group).toBe("paper");
     expect(r.command).toBe("init");
     expect(r.entry).toBe(PAPER_COMMANDS.init);
   });
 
   it("paper unknown returns undefined entry", () => {
     const r = resolveCommand(["paper", "nope"]);
-    expect(r.isPaper).toBe(true);
+    expect(r.group).toBe("paper");
     expect(r.entry).toBeUndefined();
   });
 });

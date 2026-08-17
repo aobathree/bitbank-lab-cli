@@ -100,6 +100,70 @@ describe("output contract", () => {
       expect(streams.stdout.endsWith("\n")).toBe(true);
       expect(streams.stdout.trimEnd()).not.toContain("\n");
     });
+
+    // human 経路（output.ts の stderr）と同じ無害化を machine 側にも適用する契約。
+    // --machine は LLM パイプラインに流れるため、経路の非対称を作らない。
+    it("error は絶対パスを basename に短縮する（human 経路と同じ扱い）", () => {
+      machineOutput({
+        success: false,
+        error: "Cannot read CSV file: /Users/alice/Documents/annual-report-2025.csv",
+        exitCode: 4,
+      });
+      const parsed = JSON.parse(streams.stdout);
+      expect(parsed.error).toBe("Cannot read CSV file: annual-report-2025.csv");
+      expect(parsed.error).not.toContain("/Users/alice");
+    });
+
+    it("error は 32 桁以上の hex（シークレット様文字列）をマスクする", () => {
+      const hex = "a".repeat(32);
+      machineOutput({ success: false, error: `auth failed: signature ${hex}`, exitCode: 5 });
+      const parsed = JSON.parse(streams.stdout);
+      expect(parsed.error).toBe("auth failed: signature <redacted>");
+      expect(parsed.error).not.toContain(hex);
+    });
+
+    it("error は secret=/apikey= 形の値をマスクする", () => {
+      machineOutput({
+        success: false,
+        // gitleaks:allow マスク検査用のダミー値（実鍵ではない）
+        error: "request rejected: secret=hunter2 apiKey=ABCD-1234",
+        exitCode: 5,
+      });
+      const parsed = JSON.parse(streams.stdout);
+      expect(parsed.error).toBe("request rejected: secret=<redacted> apiKey=<redacted>");
+      expect(parsed.error).not.toContain("hunter2");
+      expect(parsed.error).not.toContain("ABCD-1234");
+    });
+
+    it("error は制御文字をエスケープする（JSON 1行契約を壊さない）", () => {
+      machineOutput({ success: false, error: "boom\u001b[31m\nsecond line", exitCode: 1 });
+      const parsed = JSON.parse(streams.stdout);
+      // ESC / LF は生の制御文字ではなく "\u001b" / "\u000a" というリテラル文字列になる。
+      expect(parsed.error).toBe("boom\\u001b[31m\\u000asecond line");
+      expect(parsed.error).not.toContain("\u001b");
+      expect(parsed.error).not.toContain("\n");
+      expect(streams.stdout.trimEnd()).not.toContain("\n");
+    });
+
+    it("マスク後も envelope の鍵集合と exitCode は不変", () => {
+      machineOutput({ success: false, error: "read failed: /etc/bitbank/keys.json", exitCode: 2 });
+      const parsed = JSON.parse(streams.stdout);
+      expect(Object.keys(parsed).sort()).toEqual(["error", "exitCode", "success"]);
+      expect(parsed.error).toBe("read failed: keys.json");
+      expect(parsed.exitCode).toBe(2);
+      expect(process.exitCode).toBe(2);
+    });
+
+    it("--machine 経路（output 経由）でも同じマスクが掛かる", () => {
+      output(
+        { success: false, error: "Cannot read CSV file: /home/alice/report.csv", exitCode: 4 },
+        "json",
+        false,
+        true,
+      );
+      expect(JSON.parse(streams.stdout).error).toBe("Cannot read CSV file: report.csv");
+      expect(streams.stderr).toBe("");
+    });
   });
 
   // ─────────────────────────────────────────────────────────
@@ -186,7 +250,7 @@ describe("output contract", () => {
     });
 
     it("trade コマンドの help は Category: trade と --execute を含む", () => {
-      const text = buildHelp("create-order", "Create a spot order") ?? "";
+      const text = buildHelp("trade create-order", "Create a spot order") ?? "";
       expect(text).toContain("Usage: bitbank trade create-order");
       expect(text).toContain("Category: trade");
       expect(text).toContain("--execute");

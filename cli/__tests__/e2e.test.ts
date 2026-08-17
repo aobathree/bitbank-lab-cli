@@ -33,6 +33,26 @@ describe("CLI E2E", () => {
     expect(stdout.length).toBeGreaterThan(0);
   });
 
+  // help は「正しい呼び出し方を知る」経路。他の入力が不正なときこそ読めないと困るので、
+  // 未知フラグ・profile 解決・format 検証のいずれよりも先に返す。
+  it.each([
+    ["未知フラグ", ["ticker", "--help", "--no-such-flag"]],
+    ["不正な profile", ["ticker", "--help", "--profile=no-such-profile-xyz"]],
+    ["不正な format", ["ticker", "--help", "--format=xml"]],
+  ])("--help は %s より優先される", async (_label, args) => {
+    const { stdout, exitCode } = await run(...args);
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("Usage: bitbank ticker");
+  });
+
+  // schema 未登録のコマンドで --help がコマンド本体の実行に化けないこと。
+  // group 単体 / 未知コマンドは従来どおり後段の分岐が扱う。
+  it("group 単体の --help はグループ一覧を出す", async () => {
+    const { stdout, exitCode } = await run("paper", "--help");
+    expect(exitCode).toBe(0);
+    expect(stdout).toContain("paper");
+  });
+
   it("exits with code 4 for unknown command", async () => {
     const { stderr, exitCode } = await run("nonexistent-command");
     expect(exitCode).toBe(4);

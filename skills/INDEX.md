@@ -48,7 +48,7 @@ Skill の追加・recipe 化の原則は [`.claude/rules/skills.md`](../.claude/
 
 | Skill | 説明 | 代表トリガー |
 |---|---|---|
-| [`portfolio`](portfolio/SKILL.md) | 保有資産の構成・JPY 建て評価額・含み損益 | 「ポートフォリオの状況を見せて」「含み益ある？」 |
+| [`portfolio`](portfolio/SKILL.md) | 保有資産の構成・JPY 建て評価額・入出金を調整した資産推移（`balance-history`） | 「ポートフォリオの状況を見せて」「含み益ある？」 |
 
 ## Operations（運用補助）
 
@@ -57,6 +57,7 @@ Skill の追加・recipe 化の原則は [`.claude/rules/skills.md`](../.claude/
 | [`data-verification`](data-verification/SKILL.md) | ローソク足データの品質検証（欠損足・OHLCV 整合性・異常値）。**明示依頼時のみ起動** | 「データ検証して」「欠損ないか確認して」 |
 | [`profile-management`](profile-management/SKILL.md) | `profiles.json` の CRUD（複数 API キーの切替） | 「API キー追加して」「profile 一覧」 |
 | [`paper-trade`](paper-trade/SKILL.md) | 仮想資金でのペーパートレード（実 API は public ticker のみ） | 「BTC を仮想で買って」「ペーパー口座の残高見て」 |
+| [`tax-report`](tax-report/SKILL.md) | 確定申告向けの取引集計・残高突合・年間取引報告書との突合・参考損益（計算は CLI 側） | 「確定申告のデータを作りたい」「年間取引報告書と合ってる？」 |
 
 ## Recipes（複合ワークフロー）
 
@@ -73,6 +74,7 @@ Skill の追加・recipe 化の原則は [`.claude/rules/skills.md`](../.claude/
 - **「この指標／戦略は儲かる？」** → 予測力なら `signal-explorer`、コスト込み PnL なら `backtest`
 - **「リスクは？」** → 単一銘柄なら `volatility-profile`、銘柄間関係なら `correlation-analysis`
 - **「リーク検証したい」** → 単独 Skill はない。`signal-explorer` Step 7 / `backtest` Step 3.5 に組み込み済み
+- **「確定申告用のデータが欲しい」** → `tax-report`（年分の確定データ）。今いくら持っているかは `portfolio`
 - **個別 Skill が複数該当しそう** → recipe が該当するか先に確認
 
 ## 共通リファレンス

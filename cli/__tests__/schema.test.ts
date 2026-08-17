@@ -25,6 +25,17 @@ describe("schema list", () => {
       const createOrder = data.find((d: { command: string }) => d.command === "trade create-order");
       expect(createOrder).toBeDefined();
       expect(createOrder.category).toBe("trade");
+      // paper / profile も一覧に載る（載っていないとモデルが存在しない
+      // `bitbank paper buy` を推測する — 実機確認 #14）。
+      const paperCreate = data.find((d: { command: string }) => d.command === "paper create-order");
+      expect(paperCreate).toBeDefined();
+      expect(paperCreate.category).toBe("paper");
+      const profileAdd = data.find((d: { command: string }) => d.command === "profile add");
+      expect(profileAdd).toBeDefined();
+      expect(profileAdd.category).toBe("profile");
+      // 素の名前で衝突していた private assets が生き残っている。
+      const assets = data.find((d: { command: string }) => d.command === "assets");
+      expect(assets.category).toBe("private");
     } finally {
       c.restore();
     }

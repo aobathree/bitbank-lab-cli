@@ -1,9 +1,9 @@
 {
   "schema_version": "1.0",
-  "cli_version": "0.2.0",
+  "cli_version": "0.0.0-dev",
   "generator": "scripts/gen-agents-catalog.ts",
-  "description": "Machine-readable command catalog for the bitbank CLI. Generated from cli/commands/schema (ALL_SCHEMAS) + trade confirm-guard (CONFIRM_PHRASES). `dangerous: true` marks fund-affecting trade commands that require --execute together with --confirm=<confirm>. Do not edit by hand — run `npx tsx scripts/gen-agents-catalog.ts`.",
-  "command_count": 28,
+  "description": "Machine-readable command catalog for the bitbank CLI. Generated from cli/commands/schema (ALL_SCHEMAS) + trade confirm-guard (CONFIRM_PHRASES). `command` is the full invocation path: subcommand groups (trade / tax / paper / profile) are spelled `<group> <name>`, everything else is a bare name. `dangerous: true` marks fund-affecting trade commands that require --execute together with --confirm=<confirm>; paper and profile touch no real funds, so their --confirm flags (paper reset, profile remove) are plain required booleans declared in `params` and are not dangerous. A param with `positional: true` is passed as a bare argument, not a flag. Do not edit by hand — run `npx tsx scripts/gen-agents-catalog.ts`.",
+  "command_count": 48,
   "dangerous_count": 5,
   "commands": [
     {
@@ -761,7 +761,7 @@
       "command": "trade-history",
       "category": "private",
       "auth_required": true,
-      "description": "Get trade execution history",
+      "description": "Get trade execution history (--all / --all-pairs auto-paginate; --year=<YYYY> for a JST tax year)",
       "dangerous": false,
       "params": {
         "type": "object",
@@ -782,9 +782,29 @@
             "type": "string",
             "description": "End timestamp (Unix ms)"
           },
+          "order-id": {
+            "type": "string",
+            "description": "Filter by order ID"
+          },
           "order": {
             "type": "string",
             "description": "Sort order (asc/desc)"
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Fetch all pages for one pair (auto-paginate; default cap 1000 pages)"
+          },
+          "all-pairs": {
+            "type": "boolean",
+            "description": "Fetch every pair in the pairs master (incl. delisted) and merge, sorted by executed_at; cannot be combined with --pair"
+          },
+          "year": {
+            "type": "string",
+            "description": "JST tax year (YYYY); implies full fetch, filters to JST 1/1–12/31; requires --pair unless --all-pairs; cannot be combined with --since/--end"
+          },
+          "max-pages": {
+            "type": "string",
+            "description": "Max pages per pair with --all/--all-pairs/--year (default: 1000; positive integer)"
           }
         },
         "required": []
@@ -899,10 +919,189 @@
       }
     },
     {
+      "command": "balance-history",
+      "category": "private",
+      "auth_required": true,
+      "description": "Reconstruct the JPY equity curve by rewinding trades and transfers from current balances",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "since": {
+            "type": "string",
+            "description": "Window start (Unix ms); cannot be combined with --days"
+          },
+          "days": {
+            "type": "string",
+            "description": "Window length in days back from now (default: 30)"
+          },
+          "granularity": {
+            "type": "string",
+            "description": "Grid step for reconstructed points (UTC boundaries)",
+            "enum": [
+              "day",
+              "month"
+            ],
+            "default": "day"
+          },
+          "max-pages": {
+            "type": "string",
+            "description": "Max history pages per pair/asset (default: 1000; positive integer). Hitting the cap sets completeness.complete=false and partial=true"
+          },
+          "no-cache": {
+            "type": "boolean",
+            "description": "Bypass the local 1day candle cache"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "as_of": {
+            "type": "string"
+          },
+          "since": {
+            "type": "string"
+          },
+          "granularity": {
+            "type": "string",
+            "enum": [
+              "day",
+              "month"
+            ]
+          },
+          "points": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "date": {
+                  "type": "string"
+                },
+                "timestamp": {
+                  "type": "number"
+                },
+                "value_jpy": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "current": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string"
+              },
+              "timestamp": {
+                "type": "number"
+              },
+              "value_jpy": {
+                "type": "number"
+              }
+            }
+          },
+          "flow": {
+            "type": "object",
+            "properties": {
+              "net_flow_jpy": {
+                "type": "number"
+              },
+              "withdrawal_fee_jpy": {
+                "type": "number"
+              }
+            }
+          },
+          "change": {
+            "type": "object",
+            "properties": {
+              "start_value_jpy": {
+                "type": "number"
+              },
+              "change_jpy": {
+                "type": "number"
+              },
+              "change_pct": {
+                "type": "number"
+              },
+              "adjusted_change_jpy": {
+                "type": "number"
+              },
+              "adjusted_change_pct": {
+                "type": "number"
+              }
+            }
+          },
+          "price_quality": {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "enum": [
+                  "complete",
+                  "partial_fallback",
+                  "fallback_only",
+                  "jpy_only"
+                ]
+              },
+              "fallback_assets": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "completeness": {
+            "type": "object",
+            "properties": {
+              "complete": {
+                "type": "boolean"
+              },
+              "truncated_pairs": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "truncated_assets": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "deposits_truncated": {
+                "type": "boolean"
+              },
+              "grid_truncated": {
+                "type": "boolean"
+              }
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "note": {
+            "type": "string"
+          },
+          "assumptions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
       "command": "deposit-history",
       "category": "private",
       "auth_required": true,
-      "description": "Get deposit history",
+      "description": "Get deposit history (--all auto-paginates; --year=<YYYY> for a JST tax year)",
       "dangerous": false,
       "params": {
         "type": "object",
@@ -922,6 +1121,18 @@
           "end": {
             "type": "string",
             "description": "End timestamp (Unix ms)"
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Fetch all pages (auto-paginate; default cap 1000 pages)"
+          },
+          "year": {
+            "type": "string",
+            "description": "JST tax year (YYYY); implies --all, filters to JST 1/1–12/31; cannot be combined with --since/--end"
+          },
+          "max-pages": {
+            "type": "string",
+            "description": "Max pages to fetch with --all/--year (default: 1000; positive integer)"
           }
         },
         "required": []
@@ -1176,7 +1387,7 @@
       "command": "withdrawal-history",
       "category": "private",
       "auth_required": true,
-      "description": "Get withdrawal history",
+      "description": "Get withdrawal history (--all / --all-assets auto-paginate; --year=<YYYY> for a JST tax year)",
       "dangerous": false,
       "params": {
         "type": "object",
@@ -1196,6 +1407,22 @@
           "end": {
             "type": "string",
             "description": "End timestamp (Unix ms)"
+          },
+          "all": {
+            "type": "boolean",
+            "description": "Fetch all pages for one asset (auto-paginate; default cap 1000 pages)"
+          },
+          "all-assets": {
+            "type": "boolean",
+            "description": "Fetch every asset in the pairs master base/quote set (incl. delisted) and merge, sorted by requested_at; cannot be combined with --asset"
+          },
+          "year": {
+            "type": "string",
+            "description": "JST tax year (YYYY); implies full fetch, filters to JST 1/1–12/31; requires --asset unless --all-assets; cannot be combined with --since/--end"
+          },
+          "max-pages": {
+            "type": "string",
+            "description": "Max pages per asset with --all/--all-assets/--year (default: 1000; positive integer)"
           }
         },
         "required": []
@@ -1800,6 +2027,1416 @@
       "output": {
         "type": "object",
         "description": "Real-time event data (varies by channel)"
+      }
+    },
+    {
+      "command": "watch",
+      "category": "stream",
+      "auth_required": false,
+      "description": "Watch a real-time public channel (ticker only)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "channel": {
+            "type": "string",
+            "description": "Required. Channel to subscribe",
+            "enum": [
+              "ticker"
+            ],
+            "positional": true
+          },
+          "pair": {
+            "type": "string",
+            "description": "Required. Trading pair (e.g. btc_jpy)",
+            "positional": true
+          },
+          "duration": {
+            "type": "string",
+            "description": "Stop after N seconds (default: run until interrupted)"
+          },
+          "count": {
+            "type": "string",
+            "description": "Stop after N events (default: run until interrupted)"
+          },
+          "idle-timeout": {
+            "type": "string",
+            "description": "Reconnect when no event arrives for N seconds",
+            "default": "30"
+          },
+          "max-retries": {
+            "type": "string",
+            "description": "Max reconnect attempts, or \"infinite\" to opt in",
+            "default": "100"
+          },
+          "backoff-cap": {
+            "type": "string",
+            "description": "Reconnect backoff cap in seconds",
+            "default": "32"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "ts": {
+            "type": "string"
+          },
+          "pair": {
+            "type": "string"
+          },
+          "last": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "bid": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "ask": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "high": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "low": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "vol": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    {
+      "command": "tax events",
+      "category": "tax",
+      "auth_required": true,
+      "description": "Normalize trade/deposit/withdrawal history into tax events (read-only)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "string",
+            "description": "Tax year in JST (e.g. 2026)"
+          },
+          "brokerage-csv": {
+            "type": "string",
+            "description": "Path to the bitbank brokerage (dealer) trade history CSV — not available via API"
+          },
+          "max-pages": {
+            "type": "string",
+            "description": "Max pages per pair/asset (safety valve)"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "events": {
+            "type": "array",
+            "items": {
+              "type": "object"
+            }
+          },
+          "pending": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_ref": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "trades": {
+                "type": "number"
+              },
+              "deposits": {
+                "type": "number"
+              },
+              "withdrawals": {
+                "type": "number"
+              },
+              "deduped": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "tax reconcile",
+      "category": "tax",
+      "auth_required": true,
+      "description": "Compare rebuilt theoretical balances against /user/assets (detect, not judge)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "brokerage-csv": {
+            "type": "string",
+            "description": "Path to the bitbank brokerage (dealer) trade history CSV — not available via API"
+          },
+          "max-pages": {
+            "type": "string",
+            "description": "Max pages per pair/asset (safety valve)"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "dust_threshold": {
+            "type": "string"
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "currency": {
+                  "type": "string"
+                },
+                "theoretical": {
+                  "type": "string"
+                },
+                "actual": {
+                  "type": "string"
+                },
+                "residual": {
+                  "type": "string"
+                },
+                "within_dust": {
+                  "type": "boolean"
+                },
+                "diagnosis": {
+                  "type": "string"
+                },
+                "hint": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "unreconcilable": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "problems": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "counts": {
+            "type": "object",
+            "properties": {
+              "events": {
+                "type": "number"
+              },
+              "pending": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "tax verify-report",
+      "category": "tax",
+      "auth_required": true,
+      "description": "Reconcile the official annual trade report CSV against API-derived totals",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "string",
+            "description": "Tax year in JST (e.g. 2026)"
+          },
+          "csv": {
+            "type": "string",
+            "description": "Path to the bitbank annual trade report CSV (spot)"
+          },
+          "margin-csv": {
+            "type": "string",
+            "description": "Path to the bitbank annual trade report CSV (margin)"
+          },
+          "brokerage-csv": {
+            "type": "string",
+            "description": "Path to the bitbank brokerage (dealer) trade history CSV — not available via API"
+          },
+          "max-pages": {
+            "type": "string",
+            "description": "Max pages per pair/asset (safety valve)"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "year_jst": {
+            "type": "number"
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "csv_rows": {
+                "type": "number"
+              },
+              "margin_csv_rows": {
+                "type": "number"
+              },
+              "events": {
+                "type": "number"
+              },
+              "pending": {
+                "type": "number"
+              },
+              "truncated": {
+                "type": "boolean"
+              }
+            }
+          },
+          "rows": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "report_kind": {
+                  "type": "string"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "report": {
+                  "type": "string"
+                },
+                "api": {
+                  "type": "string"
+                },
+                "diff": {
+                  "type": "string"
+                },
+                "tolerance": {
+                  "type": "string"
+                },
+                "within_tolerance": {
+                  "type": "boolean"
+                },
+                "diagnosis": {
+                  "type": "string"
+                },
+                "hint": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "report_checks": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "target": {
+                  "type": "string"
+                },
+                "ok": {
+                  "type": "boolean"
+                },
+                "detail": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "unsupported": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "currency": {
+                  "type": "string"
+                },
+                "field": {
+                  "type": "string"
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "unknown_columns": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disclaimers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "tax pnl",
+      "category": "tax",
+      "auth_required": true,
+      "description": "Transaction summary + reference P&L when the display guards all pass",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "year": {
+            "type": "string",
+            "description": "Tax year in JST (e.g. 2026)"
+          },
+          "method": {
+            "type": "string",
+            "description": "Valuation method",
+            "enum": [
+              "total-average",
+              "moving-average"
+            ],
+            "default": "total-average"
+          },
+          "taxation": {
+            "type": "string",
+            "description": "Confirm the taxation regime for the year (derived from --year; mismatch is an error)",
+            "enum": [
+              "comprehensive",
+              "separate"
+            ]
+          },
+          "carryover": {
+            "type": "string",
+            "description": "Path to carryover JSON, or \"zero\" for a first year"
+          },
+          "attest": {
+            "type": "boolean",
+            "description": "Attest that no holdings/trades of the same asset exist outside this bitbank account"
+          },
+          "brokerage-csv": {
+            "type": "string",
+            "description": "Path to the bitbank brokerage (dealer) trade history CSV — not available via API"
+          },
+          "max-pages": {
+            "type": "string",
+            "description": "Max pages per pair/asset (safety valve)"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "year_jst": {
+            "type": "number"
+          },
+          "method": {
+            "type": "string"
+          },
+          "taxation": {
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string"
+              },
+              "certainty": {
+                "type": "string"
+              },
+              "basis": {
+                "type": "string"
+              }
+            }
+          },
+          "attested": {
+            "type": "boolean"
+          },
+          "source": {
+            "type": "object",
+            "properties": {
+              "year": {
+                "type": "object",
+                "properties": {
+                  "events": {
+                    "type": "number"
+                  },
+                  "deferred": {
+                    "type": "number"
+                  }
+                }
+              },
+              "full_history": {
+                "type": "object",
+                "properties": {
+                  "pending": {
+                    "type": "number"
+                  },
+                  "deduped": {
+                    "type": "number"
+                  },
+                  "truncated": {
+                    "type": "boolean"
+                  }
+                }
+              }
+            }
+          },
+          "currencies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "currency": {
+                  "type": "string"
+                },
+                "method": {
+                  "type": "string"
+                },
+                "summary": {
+                  "type": "object",
+                  "properties": {
+                    "acquired_qty": {
+                      "type": "string"
+                    },
+                    "acquired_cost_jpy": {
+                      "type": "string"
+                    },
+                    "disposed_qty": {
+                      "type": "string"
+                    },
+                    "proceeds_jpy": {
+                      "type": "string"
+                    },
+                    "income_jpy": {
+                      "type": "string"
+                    },
+                    "expense_jpy": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "reference": {
+                  "type": "object",
+                  "properties": {
+                    "unit_price_jpy": {
+                      "type": "string"
+                    },
+                    "cogs_jpy": {
+                      "type": "string"
+                    },
+                    "closing_qty": {
+                      "type": "string"
+                    },
+                    "closing_cost_jpy": {
+                      "type": "string"
+                    },
+                    "revenue_total_jpy": {
+                      "type": "string"
+                    },
+                    "expense_total_jpy": {
+                      "type": "string"
+                    },
+                    "reference_pnl_jpy": {
+                      "type": "string"
+                    }
+                  }
+                },
+                "nta_compat": {
+                  "type": "object",
+                  "properties": {
+                    "mode": {
+                      "type": "string",
+                      "enum": [
+                        "NTA_SHEET_2025_12"
+                      ]
+                    },
+                    "cogs_jpy": {
+                      "type": "string"
+                    },
+                    "closing_cost_jpy": {
+                      "type": "string"
+                    },
+                    "income_total_jpy": {
+                      "type": "string"
+                    },
+                    "expense_total_jpy": {
+                      "type": "string"
+                    },
+                    "income_jpy": {
+                      "type": "string"
+                    },
+                    "carryover_cost_jpy": {
+                      "type": "string"
+                    },
+                    "delta": {
+                      "type": "object",
+                      "properties": {
+                        "cogs_jpy": {
+                          "type": "string"
+                        },
+                        "income_total_jpy": {
+                          "type": "string"
+                        },
+                        "expense_total_jpy": {
+                          "type": "string"
+                        },
+                        "income_jpy": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  }
+                },
+                "blocked_by": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "warnings": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "policy_ids": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "reconciliation": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "currency": {
+                  "type": "string"
+                },
+                "theoretical": {
+                  "type": "string"
+                },
+                "actual": {
+                  "type": "string"
+                },
+                "residual": {
+                  "type": "string"
+                },
+                "within_dust": {
+                  "type": "boolean"
+                },
+                "diagnosis": {
+                  "type": "string"
+                },
+                "hint": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "pending": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "source_ref": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "disclaimers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "paper init",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Initialize a paper trading account (virtual JPY balance)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "jpy": {
+            "type": "string",
+            "description": "Required. Initial virtual JPY balance (e.g. 1000000)"
+          },
+          "force": {
+            "type": "boolean",
+            "description": "Overwrite an existing paper state instead of failing"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "version": {
+            "type": "number"
+          },
+          "createdAt": {
+            "type": "string"
+          },
+          "updatedAt": {
+            "type": "string"
+          },
+          "initialJpy": {
+            "type": "number"
+          },
+          "balances": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "number"
+            }
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "pair": {
+                  "type": "string"
+                },
+                "side": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "fillPrice": {
+                  "type": "number"
+                },
+                "feeQuote": {
+                  "type": "number"
+                },
+                "filledAt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "lastTickAt": {
+            "type": "string"
+          },
+          "openOrders": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "pair": {
+                  "type": "string"
+                },
+                "side": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "price": {
+                  "type": "number"
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "createdAt": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "paper assets",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Show paper trading balances (available / locked / total)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "asset": {
+              "type": "string"
+            },
+            "total": {
+              "type": "number"
+            },
+            "locked": {
+              "type": "number"
+            },
+            "available": {
+              "type": "number"
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "paper create-order",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Place a paper order (market or limit)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pair": {
+            "type": "string",
+            "description": "Trading pair (e.g. btc_jpy)"
+          },
+          "side": {
+            "type": "string",
+            "description": "Order side",
+            "enum": [
+              "buy",
+              "sell"
+            ]
+          },
+          "type": {
+            "type": "string",
+            "description": "Order type",
+            "enum": [
+              "market",
+              "limit"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "description": "Order amount"
+          },
+          "price": {
+            "type": "string",
+            "description": "Limit price (required for limit orders)"
+          },
+          "refresh-pairs": {
+            "type": "boolean",
+            "description": "Bypass the pairs cache before validating order size"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "pair": {
+                "type": "string"
+              },
+              "side": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "amount": {
+                "type": "number"
+              },
+              "fillPrice": {
+                "type": "number"
+              },
+              "feeQuote": {
+                "type": "number"
+              },
+              "filledAt": {
+                "type": "string"
+              },
+              "balances": {
+                "type": "object",
+                "additionalProperties": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "properties": {
+              "placed": {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "pair": {
+                    "type": "string"
+                  },
+                  "side": {
+                    "type": "string"
+                  },
+                  "type": {
+                    "type": "string"
+                  },
+                  "price": {
+                    "type": "number"
+                  },
+                  "amount": {
+                    "type": "number"
+                  },
+                  "createdAt": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    },
+    {
+      "command": "paper active-orders",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Show paper open (limit) orders",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "pair": {
+              "type": "string"
+            },
+            "side": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "price": {
+              "type": "number"
+            },
+            "amount": {
+              "type": "number"
+            },
+            "createdAt": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "paper cancel-order",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Cancel a paper limit order by id",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Required. Open order id to cancel"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "canceled": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "pair": {
+                "type": "string"
+              },
+              "side": {
+                "type": "string"
+              },
+              "type": {
+                "type": "string"
+              },
+              "price": {
+                "type": "number"
+              },
+              "amount": {
+                "type": "number"
+              },
+              "createdAt": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "paper tick",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Resolve paper limit fills against recent 1m candles",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pair": {
+            "type": "string",
+            "description": "Resolve fills for this pair only (default: every pair with open orders)"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "filled": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "pair": {
+                  "type": "string"
+                },
+                "side": {
+                  "type": "string"
+                },
+                "type": {
+                  "type": "string"
+                },
+                "amount": {
+                  "type": "number"
+                },
+                "fillPrice": {
+                  "type": "number"
+                },
+                "feeQuote": {
+                  "type": "number"
+                },
+                "filledAt": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "lastTickAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "command": "paper trade-history",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Show paper trading execution history",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string"
+            },
+            "pair": {
+              "type": "string"
+            },
+            "side": {
+              "type": "string"
+            },
+            "type": {
+              "type": "string"
+            },
+            "amount": {
+              "type": "number"
+            },
+            "fillPrice": {
+              "type": "number"
+            },
+            "feeQuote": {
+              "type": "number"
+            },
+            "filledAt": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "paper reset",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Reset paper trading state (requires --confirm)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "confirm": {
+            "type": "boolean",
+            "description": "Required. Deletes the local paper state; the command refuses to run without it"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "deleted": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "command": "paper pnl",
+      "category": "paper",
+      "auth_required": false,
+      "description": "Show paper trading P&L (realized + unrealized, per pair + total)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "pair": {
+            "type": "string",
+            "description": "Report a single JPY pair (default: every JPY pair traded)"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "perPair": {
+            "type": "object",
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "pair": {
+                  "type": "string"
+                },
+                "position": {
+                  "type": "number"
+                },
+                "avgCost": {
+                  "type": "number"
+                },
+                "currentPrice": {
+                  "type": "number"
+                },
+                "realizedPnl": {
+                  "type": "number"
+                },
+                "unrealizedPnl": {
+                  "type": "number"
+                },
+                "totalPnl": {
+                  "type": "number"
+                }
+              }
+            }
+          },
+          "total": {
+            "type": "object",
+            "properties": {
+              "realizedPnl": {
+                "type": "number"
+              },
+              "unrealizedPnl": {
+                "type": "number"
+              },
+              "totalPnl": {
+                "type": "number"
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "profile add",
+      "category": "profile",
+      "auth_required": false,
+      "description": "Add a new credential profile (key/secret prompted; secret hidden)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Profile name",
+            "positional": true
+          },
+          "description": {
+            "type": "string",
+            "description": "Free-form note stored alongside the profile"
+          },
+          "default": {
+            "type": "boolean",
+            "description": "Also make this the default profile"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "added": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "description": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "command": "profile list",
+      "category": "profile",
+      "auth_required": false,
+      "description": "List configured profiles (no secrets)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {},
+        "required": []
+      },
+      "output": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
+              "type": "string"
+            },
+            "default": {
+              "type": "boolean"
+            },
+            "description": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
+    {
+      "command": "profile show",
+      "category": "profile",
+      "auth_required": false,
+      "description": "Show a profile (secret always masked)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Profile name",
+            "positional": true
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "default": {
+            "type": "boolean"
+          },
+          "keyMasked": {
+            "type": "string"
+          },
+          "secretMasked": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "createdAt": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    {
+      "command": "profile remove",
+      "category": "profile",
+      "auth_required": false,
+      "description": "Remove a profile (requires --confirm)",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Profile name",
+            "positional": true
+          },
+          "confirm": {
+            "type": "boolean",
+            "description": "Required. Deletes the profile from profiles.json; the command refuses to run without it"
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "removed": {
+            "type": "string"
+          },
+          "defaultCleared": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    {
+      "command": "profile set-default",
+      "category": "profile",
+      "auth_required": false,
+      "description": "Set the default profile",
+      "dangerous": false,
+      "params": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Profile name",
+            "positional": true
+          }
+        },
+        "required": []
+      },
+      "output": {
+        "type": "object",
+        "properties": {
+          "default": {
+            "type": "string"
+          }
+        }
       }
     }
   ]

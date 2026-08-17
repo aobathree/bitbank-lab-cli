@@ -41,6 +41,10 @@ const KNOWN_FLAGS = new Set([
   "--raw",
   "--no-cache",
   "--log-file",
+  // balance-history（portfolio skill が資産推移で使う）
+  "--days",
+  "--granularity",
+  "--max-pages",
   // Node.js flags referenced in skill docs
   "--env-file",
 ]);

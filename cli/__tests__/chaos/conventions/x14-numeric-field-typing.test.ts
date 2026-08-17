@@ -19,17 +19,33 @@ function isFalsePositive(line: string): boolean {
   return NON_NUMERIC_SUFFIXES.some((sfx) => fieldName.endsWith(sfx));
 }
 
+function violationsIn(dir: string): string[] {
+  const cmd = `grep -rEn '${NUMERIC_FIELD_PATTERN}' ${dir} --include='*.ts' || true`;
+  return execSync(cmd, { encoding: "utf-8" })
+    .trim()
+    .split("\n")
+    .filter((l) => l !== "")
+    .filter((l) => !isFalsePositive(l));
+}
+
 describe("Chaos X-14: numeric-like fields are not z.string()", () => {
   it("cli/commands/ defines no numeric-like field as z.string()", () => {
-    const cmd = `grep -rEn '${NUMERIC_FIELD_PATTERN}' cli/commands/ --include='*.ts' || true`;
-    const out = execSync(cmd, { encoding: "utf-8" }).trim();
-    const violations = out
-      .split("\n")
-      .filter((l) => l !== "")
-      .filter((l) => !isFalsePositive(l));
+    const violations = violationsIn("cli/commands/");
     if (violations.length > 0) {
       expect.fail(
         `Numeric-like fields defined as z.string() (should use numStr / nullableNumStr from cli/schema-helpers.ts):\n${violations.join("\n")}`,
+      );
+    }
+  });
+
+  // 税務経路は number 化してはいけない（ADR-005 / v2 付録F）。そこで numStr ではなく
+  // decStr（十進文字列のまま保持）を使う。**生の z.string() は同様に禁止**なので、
+  // ディレクトリを分けて規約から外れるのではなく、規約側を cli/tax/ へ広げる。
+  it("cli/tax/ defines no numeric-like field as z.string() (must use decStr)", () => {
+    const violations = violationsIn("cli/tax/");
+    if (violations.length > 0) {
+      expect.fail(
+        `Numeric-like fields defined as z.string() (tax path must use decStr from cli/schema-helpers.ts):\n${violations.join("\n")}`,
       );
     }
   });

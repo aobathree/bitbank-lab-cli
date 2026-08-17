@@ -9,7 +9,12 @@ const RateLimitSchema = z.object({
 
 export type RateLimitInfo = z.infer<typeof RateLimitSchema>;
 
-export type TruncationReason = "MAX_RANGE_FETCHES" | "HARD_MAX_SEGMENTS" | "MAX_PAGES";
+export type TruncationReason =
+  | "MAX_RANGE_FETCHES"
+  | "HARD_MAX_SEGMENTS"
+  | "MAX_PAGES"
+  // balance-history の評価時点が上限（MAX_POINTS）に達し、古い側の点を落とした
+  | "MAX_POINTS";
 
 export type Gap = { from: number; to: number; missing: number };
 
@@ -34,6 +39,8 @@ export type ResultMeta = {
   requestedLimit?: number;
   returnedRows?: number;
   reason?: TruncationReason;
+  truncatedPairs?: string[]; // 全ペア横断取得で max-pages 上限に当たった pair 一覧
+  truncatedAssets?: string[]; // 全 asset 横断取得で max-pages 上限に当たった asset 一覧
   dedupedCount?: number;
   gaps?: Gap[];
   lastIsIncomplete?: boolean;

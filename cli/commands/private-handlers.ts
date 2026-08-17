@@ -35,7 +35,8 @@ export const privateCommands: Record<string, CommandEntry> = {
     })),
   },
   "trade-history": {
-    description: "Get trade execution history",
+    description:
+      "Get trade execution history (--all / --all-pairs auto-paginate; --year=<YYYY> for a JST tax year)",
     options: {
       pair: str,
       count: str,
@@ -44,9 +45,11 @@ export const privateCommands: Record<string, CommandEntry> = {
       end: str,
       order: str,
       all: bool(),
+      "all-pairs": bool(),
+      year: str,
       "max-pages": str,
     },
-    handler: handler("./private/trade-history-all.js", "tradeHistoryDispatch", (_a, v) => ({
+    handler: handler("./private/trade-history-dispatch.js", "tradeHistoryDispatch", (_a, v) => ({
       pair: valStr(v, "pair"),
       count: valStr(v, "count"),
       orderId: valStr(v, "order-id"),
@@ -54,6 +57,8 @@ export const privateCommands: Record<string, CommandEntry> = {
       end: valStr(v, "end"),
       order: valStr(v, "order"),
       all: !!v.all,
+      allPairs: !!v["all-pairs"],
+      year: valStr(v, "year"),
       maxPages: valStr(v, "max-pages"),
     })),
   },

@@ -4,30 +4,39 @@ import {
   commandDescriptions,
   PAPER_COMMANDS,
   PROFILE_COMMANDS,
+  TAX_COMMANDS,
   TRADE_COMMANDS,
 } from "./commands/registry.js";
-import type { Format } from "./types.js";
+import { EXIT } from "./exit-codes.js";
+import type { Format, Result } from "./types.js";
+
+/** サブコマンド形式で呼ぶグループ（`bitbank <group> <name>`）。
+ *  フラット一覧での誤爆を減らすためのもので、実行ガードではない（commands.md）。 */
+const GROUP_REGISTRY = {
+  trade: TRADE_COMMANDS,
+  paper: PAPER_COMMANDS,
+  profile: PROFILE_COMMANDS,
+  tax: TAX_COMMANDS,
+} as const;
+
+export type SubcommandGroup = keyof typeof GROUP_REGISTRY;
+
+const GROUPS = Object.keys(GROUP_REGISTRY) as SubcommandGroup[];
 
 export type ResolvedCommand = {
-  isTrade: boolean;
-  isPaper: boolean;
-  isProfile: boolean;
+  /** サブコマンドグループ名。フラットなコマンドでは undefined */
+  group: SubcommandGroup | undefined;
   command: string | undefined;
   entry: CommandEntry | undefined;
 };
 
 export function resolveCommand(positionals: string[]): ResolvedCommand {
-  const isTrade = positionals[0] === "trade";
-  const isPaper = positionals[0] === "paper";
-  const isProfile = positionals[0] === "profile";
-  const isSub = isTrade || isPaper || isProfile;
-  const command = isSub ? positionals[1] : positionals[0];
+  const group = GROUPS.find((g) => g === positionals[0]);
+  const command = group ? positionals[1] : positionals[0];
   let entry: CommandEntry | undefined;
-  if (isTrade) entry = command ? TRADE_COMMANDS[command] : undefined;
-  else if (isPaper) entry = command ? PAPER_COMMANDS[command] : undefined;
-  else if (isProfile) entry = command ? PROFILE_COMMANDS[command] : undefined;
+  if (group) entry = command ? GROUP_REGISTRY[group][command] : undefined;
   else entry = COMMANDS[command ?? ""];
-  return { isTrade, isPaper, isProfile, command, entry };
+  return { group, command, entry };
 }
 
 export async function handleSpecialCommand(
@@ -54,7 +63,17 @@ export async function handleSpecialCommand(
   return false;
 }
 
-export async function runCommandHelp(command: string, description: string): Promise<boolean> {
+/** `group` 付きで呼ぶと `<group> <name>` キーで schema を引く（ALL_SCHEMAS の
+ *  キーは呼び出しパス。素の名前は private の assets と paper assets のように衝突する）。
+ *  schema 未登録で help を出せない場合も失敗を返す。呼び出し側がコマンド本体へ
+ *  落ちると、`--help` のつもりの呼び出しがそのまま実行に化けるため。 */
+export async function runCommandHelp(
+  command: string,
+  description: string,
+  group?: SubcommandGroup,
+): Promise<Result<void>> {
   const { showCommandHelp } = await import("./commands/schema/help.js");
-  return showCommandHelp(command, description);
+  const path = group ? `${group} ${command}` : command;
+  if (showCommandHelp(path, description)) return { success: true, data: undefined };
+  return { success: false, error: `No help available for "${path}".`, exitCode: EXIT.PARAM };
 }

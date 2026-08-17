@@ -66,7 +66,27 @@ export const privateAccountSchemas: Record<string, SchemaDef> = {
   },
   "trade-history": {
     category: "private",
-    params: { pair, count, since, end, order: p("string", "Sort order (asc/desc)") },
+    params: {
+      pair,
+      count,
+      since,
+      end,
+      "order-id": p("string", "Filter by order ID"),
+      order: p("string", "Sort order (asc/desc)"),
+      all: p("boolean", "Fetch all pages for one pair (auto-paginate; default cap 1000 pages)"),
+      "all-pairs": p(
+        "boolean",
+        "Fetch every pair in the pairs master (incl. delisted) and merge, sorted by executed_at; cannot be combined with --pair",
+      ),
+      year: p(
+        "string",
+        "JST tax year (YYYY); implies full fetch, filters to JST 1/1–12/31; requires --pair unless --all-pairs; cannot be combined with --since/--end",
+      ),
+      "max-pages": p(
+        "string",
+        "Max pages per pair with --all/--all-pairs/--year (default: 1000; positive integer)",
+      ),
+    },
     output: {
       type: "array",
       items: {

@@ -726,7 +726,7 @@ cli/
     paper/              # ペーパートレード（ライブ価格 × ローカル state、9）
     stream.ts           # リアルタイムストリーム
   __tests__/            # 全コマンドのテスト（件数は npx vitest run 参照）
-skills/                 # Agent Skills（12本 + _shared/references/）
+skills/                 # Agent Skills（13本 + _shared/references/）
 docs/                   # ADR・フェーズ管理・カスタマイズガイド
 .contrib/               # コントリビューター向け hook tooling（clone 利用者は不要）
 ```
